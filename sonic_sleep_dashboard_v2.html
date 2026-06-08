@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>소닉슬립 가격 트래킹</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sb:#18202e;--sb-text:rgba(255,255,255,.5);--sb-active-bg:rgba(99,179,237,.13);--sb-active:#63b3ed;
+  --bg:#f3f5fb;--card:#fff;--border:#e6eaf4;--border2:#d0d7eb;
+  --text:#1a202c;--text2:#64748b;--text3:#a0aec0;
+  --blue:#4f7ef8;--blue-l:#eef2ff;
+  --green:#38a169;--green-l:#f0fff4;
+  --red:#e53e3e;--red-l:#fff5f5;
+  --amber:#d69e2e;--amber-l:#fffff0;
+  --purple:#805ad5;--purple-l:#faf5ff;
+  --r:12px;--r-sm:8px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --font:'Pretendard',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;display:flex;height:100vh;overflow:hidden}
+
+.sb{width:176px;flex-shrink:0;background:var(--sb);display:flex;flex-direction:column;overflow-y:auto}
+.sb-brand{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-brand-name{font-size:12px;font-weight:700;color:#fff}
+.sb-brand-sub{font-size:10px;color:var(--sb-text);margin-top:2px}
+.sb-sec{padding:14px 10px 4px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.22);text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:1px 6px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;color:var(--sb-text);border:none;background:none;width:calc(100% - 12px);text-align:left;transition:all .12s;font-family:var(--font)}
+.ni:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.8)}
+.ni.active{background:var(--sb-active-bg);color:var(--sb-active);font-weight:500}
+.ni svg{width:14px;height:14px;flex-shrink:0;opacity:.6}
+.ni.active svg{opacity:1}
+.sb-footer{margin-top:auto;padding:12px 10px;border-top:1px solid rgba(255,255,255,.06)}
+.comp-chip{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;margin:2px 6px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.comp-chip-name{font-size:12px;color:rgba(255,255,255,.7);font-weight:500;display:flex;align-items:center;gap:5px}
+.comp-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.comp-chip-del{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:15px;padding:0 2px;transition:.12s}
+.comp-chip-del:hover{color:var(--red)}
+.add-comp-row{display:flex;gap:4px;padding:6px 6px 0;margin-top:2px}
+.add-comp-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:#fff;font-size:12px;padding:5px 8px;outline:none;font-family:var(--font)}
+.add-comp-input::placeholder{color:rgba(255,255,255,.25)}
+.add-comp-btn{background:var(--blue);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;padding:5px 10px;cursor:pointer}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:42px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.topbar-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.date-chip{background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px}
+.content{flex:1;overflow:hidden;padding:10px 16px;display:flex;flex-direction:column;min-height:0}
+.tab-panel{display:none;flex-direction:column;flex:1;min-height:0}.tab-panel.active{display:flex;overflow-y:auto}
+
+.comp-bar{display:flex;gap:0;margin-bottom:6px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:3px;width:fit-content;box-shadow:var(--sh)}
+.comp-bar-btn{padding:4px 12px;border-radius:7px;border:none;background:transparent;color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font);transition:.12s;display:flex;align-items:center;gap:6px}
+.comp-bar-btn:hover{color:var(--text)}
+.comp-bar-btn.active{background:var(--blue);color:#fff;box-shadow:0 1px 4px rgba(79,126,248,.3)}
+.comp-dot-sm{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+.alert{display:none;padding:7px 12px;border-radius:var(--r-sm);font-size:12px;margin-bottom:6px;font-weight:500}
+.alert.success{background:var(--green-l);border:1px solid #9ae6b4;color:var(--green)}
+.alert.warn{background:var(--amber-l);border:1px solid #f6e05e;color:var(--amber)}
+.alert.error{background:var(--red-l);border:1px solid #feb2b2;color:var(--red)}
+.alert.info{background:var(--blue-l);border:1px solid #90cdf4;color:var(--blue)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:6px}
+.card-hd{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card-title{font-size:11px;font-weight:600;color:var(--text)}
+.card-bd{padding:16px 18px}
+.card-bd-sm{padding:12px 18px}
+
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;font-weight:600;color:var(--text2);letter-spacing:.03em;text-transform:uppercase}
+.field input,.field select,.field textarea{background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:13px;padding:7px 11px;outline:none;transition:.12s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(79,126,248,.1)}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r-sm);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.12s;font-family:var(--font)}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#3d6ae6}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2)}.btn-ghost:hover{background:var(--bg);color:var(--text)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#2f855a}
+.btn-sm{padding:3px 8px;font-size:10px}
+
+/* Upload zone */
+.upload-zone{border:2px dashed #c3d0e8;border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;transition:.15s;background:#fafbff;position:relative;margin-bottom:14px}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--blue);background:var(--blue-l)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-emoji{font-size:32px;margin-bottom:8px}
+.upload-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.upload-sub{font-size:12px;color:var(--text3)}
+.ai-chip{display:inline-flex;align-items:center;gap:4px;margin-top:10px;background:var(--blue-l);color:var(--blue);font-size:11px;font-weight:600;padding:3px 12px;border-radius:20px}
+
+.ai-loading{display:none;align-items:center;gap:10px;padding:14px 18px;background:var(--blue-l);border:1px solid #90cdf4;border-radius:var(--r-sm);margin-bottom:14px;font-size:13px;color:var(--blue);font-weight:500}
+.spinner{width:16px;height:16px;border:2px solid #bee3f8;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.preview-img-box{display:none;margin-bottom:14px}
+.preview-img-box img{max-height:180px;border-radius:var(--r-sm);border:1px solid var(--border);object-fit:contain}
+
+/* Price matrix table */
+.matrix-wrap{overflow-x:auto;margin-bottom:14px}
+.matrix-tbl{border-collapse:collapse;width:100%;font-size:12px;min-width:500px}
+.matrix-tbl th{padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--text2);background:#f3f5fb;border:1px solid var(--border);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.matrix-tbl th.row-head{text-align:left;min-width:160px}
+.matrix-tbl td{padding:9px 12px;border:1px solid var(--border);text-align:center;vertical-align:middle}
+.matrix-tbl td.row-label{text-align:left;font-weight:600;color:var(--text);background:#fafbff;white-space:nowrap;font-size:12px}
+.matrix-tbl td.price{font-weight:700;font-size:13px;color:var(--text);background:#fff}
+.matrix-tbl td.price.empty{color:var(--text3);font-weight:400;background:#fafafa;font-size:12px}
+.matrix-tbl td.price .diff{display:block;font-size:10px;font-weight:500;margin-top:2px}
+.matrix-tbl td.price .diff.up{color:var(--red)}
+.matrix-tbl td.price .diff.dn{color:var(--green)}
+
+/* date selector */
+.date-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.date-tab{padding:3px 9px;border-radius:20px;border:1.5px solid var(--border2);background:var(--card);color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.12s;font-family:var(--font)}
+.date-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.date-tab.has-data{border-color:var(--blue);color:var(--blue)}
+
+/* parsed result preview */
+.parsed-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:var(--r-sm);background:var(--bg);border:1px solid var(--border);margin-bottom:6px;gap:10px}
+.parsed-item-opt{font-size:13px;font-weight:500;color:var(--text);flex:1}
+.parsed-item-price{font-size:14px;font-weight:700;color:var(--blue);white-space:nowrap}
+.parsed-item-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1}
+.parsed-item-del:hover{color:var(--red)}
+
+/* trend chart */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh)}
+.chart-lbl{font-size:11px;font-weight:600;color:var(--text3);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+
+/* table */
+.tbl-wrap{overflow-x:auto}
+table.log{width:100%;border-collapse:collapse;font-size:12px}
+table.log th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;background:#f8fafc;border-bottom:1px solid var(--border)}
+table.log td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+table.log tr:last-child td{border-bottom:none}
+table.log tr:hover td{background:#fafbff}
+table.log td.v{color:var(--text);font-weight:600}
+.empty-row{text-align:center;padding:32px;color:var(--text3)}
+
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.bw{background:var(--amber-l);color:var(--amber);border:1px solid #f6e05e}
+.bg{background:var(--green-l);color:var(--green);border:1px solid #9ae6b4}
+.bb{background:var(--blue-l);color:var(--blue);border:1px solid #90cdf4}
+.br{background:var(--red-l);color:var(--red);border:1px solid #feb2b2}
+
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.ph-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.ph-sub{font-size:10px;color:var(--text3);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sb">
+  <div class="sb-brand">
+    <div class="sb-brand-name">이브닝 모션 경쟁사 트래킹</div>
+    <div class="sb-brand-sub">옵션 가격 모니터링</div>
+  </div>
+  <div class="sb-sec">메뉴</div>
+  <button class="ni" onclick="switchTab('compare',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="8" r="3"/><circle cx="11" cy="8" r="3"/><path d="M8 5v6"/></svg>
+    4자 비교
+  </button>
+  <button class="ni active" onclick="switchTab('upload',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v8M5 6l3-3 3 3M3 12h10"/></svg>
+    캡처 업로드
+  </button>
+  <button class="ni" onclick="switchTab('matrix',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 2v12"/></svg>
+    옵션 가격표
+  </button>
+  <button class="ni" onclick="switchTab('trend',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12l4-4 3 2 5-6"/></svg>
+    가격 추이
+  </button>
+  <button class="ni" onclick="switchTab('iloom',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6" y="5" width="3" height="9" rx="1"/><rect x="10" y="2" width="3" height="12" rx="1"/></svg>
+    일룸 매출 분석
+  </button>
+  <button class="ni" onclick="switchTab('review',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12v8H9l-3 2v-2H2z"/></svg>
+    리뷰 분석
+  </button>
+  <div class="sb-sec">경쟁사 관리</div>
+  <div id="comp-list"></div>
+  <div class="add-comp-row">
+    <input class="add-comp-input" id="add-comp-input" placeholder="경쟁사 추가..." onkeydown="if(event.key==='Enter')addComp()"/>
+    <button class="add-comp-btn" onclick="addComp()">+</button>
+  </div>
+  <div class="sb-sec"></div>
+  <button class="ni" onclick="exportCSV()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+    CSV 내보내기
+  </button>
+  <button class="ni" onclick="clearAll()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 9h6l1-9"/></svg>
+    초기화
+  </button>
+  <div class="sb-footer" style="padding:10px 10px 12px">
+    <div id="api-key-section">
+      <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Anthropic API Key</div>
+      <div style="display:flex;gap:4px">
+        <input type="password" id="api-key-input" placeholder="sk-ant-..." 
+          style="flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-size:10px;padding:5px 8px;outline:none;font-family:monospace"
+          onkeydown="if(event.key==='Enter')saveApiKey()"/>
+        <button onclick="saveApiKey()" style="background:var(--blue);border:none;border-radius:6px;color:#fff;font-size:10px;font-weight:600;padding:5px 8px;cursor:pointer;white-space:nowrap">저장</button>
+      </div>
+      <div id="api-key-status" style="font-size:10px;margin-top:4px;color:rgba(255,255,255,.35)">미설정</div>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,.2);text-align:center;margin-top:8px" id="sb-date"></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">캡처 업로드</div>
+      <div class="topbar-sub" id="topbar-sub">이미지 1장 업로드 → AI가 모든 옵션 조합 가격 한번에 추출</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="date-chip" id="header-date"></span>
+    </div>
+  </header>
+
+  <div class="content">
+
+
+  <!-- ══ TAB: 4자 비교 ══ -->
+  <div class="tab-panel" id="tab-compare" style="overflow-y:auto">
+    <!-- KPI 상단 — 일룸(온/오프라인) > 슬로우베드 > 소닉슬립 > 오키미키 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px;flex-shrink:0" id="cmp-kpis"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-shrink:0;flex-wrap:wrap">
+      <div style="display:flex;gap:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:2px">
+        <button id="cmp-btn-sales" class="btn btn-primary btn-sm" style="border-radius:6px" onclick="setCmpView('sales')">판매량</button>
+        <button id="cmp-btn-rating" class="btn btn-ghost btn-sm" style="border-radius:6px" onclick="setCmpView('rating')">평점</button>
+        <button id="cmp-btn-share" class="btn btn-ghost btn-sm" style="border-radius:6px" onclick="setCmpView('share')">점유율</button>
+      </div>
+      <div style="display:flex;gap:3px">
+        <button class="date-tab active" id="cmp-period-6" onclick="setCmpPeriod(6,this)">6개월</button>
+        <button class="date-tab" id="cmp-period-12" onclick="setCmpPeriod(12,this)">12개월</button>
+        <button class="date-tab" id="cmp-period-all" onclick="setCmpPeriod(99,this)">전체</button>
+      </div>
+      <span style="font-size:10px;color:var(--text3);margin-left:auto">※ 소닉슬립·오키미키: 리뷰×10 추정 / 슬로우베드·일룸: 실수주</span>
+    </div>
+
+    <!-- 메인 2컬럼 -->
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:8px">
+
+      <!-- 왼쪽: 차트 + 점유율 테이블(높이 확장) -->
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="card" style="margin-bottom:0;display:flex;flex-direction:column;overflow:hidden">
+          <div class="card-hd" style="flex-shrink:0">
+            <div class="card-title" id="cmp-chart-lbl">월별 판매량 추이</div>
+          </div>
+          <div style="position:relative;height:220px;padding:6px 10px">
+            <canvas id="cmp-chart" style="position:absolute;inset:6px 10px;width:calc(100% - 20px)!important;height:calc(100% - 12px)!important"></canvas>
+          </div>
+        </div>
+        <!-- 점유율 테이블 — 높이 확장 (스크롤 없이 더 보이도록) -->
+        <div class="card" style="margin-bottom:0;display:flex;flex-direction:column">
+          <div class="card-hd" style="flex-shrink:0">
+            <div class="card-title">추정 시장점유율</div>
+            <span style="font-size:10px;color:var(--text3)">4사 합산 | 매출량/매출액 구분</span>
+          </div>
+          <!-- 매출량/매출액 탭 -->
+          <div style="display:flex;gap:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:2px;width:fit-content;margin:8px 18px 4px">
+            <button id="share-tab-qty" class="btn btn-primary btn-sm" style="border-radius:6px;font-size:10px" onclick="setShareMetric('qty')">📦 매출량(수량)</button>
+            <button id="share-tab-amt" class="btn btn-ghost btn-sm" style="border-radius:6px;font-size:10px" onclick="setShareMetric('amt')">💰 매출액</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="log" style="font-size:11px">
+              <thead id="cmp-share-thead"><tr><th>월</th><th>일룸</th><th>슬로우베드</th><th>소닉슬립</th><th>오키미키</th><th>소닉추이</th></tr></thead>
+              <tbody id="cmp-share-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 일룸 품목별 경쟁사 비교 + 리뷰 요약 -->
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <!-- 일룸 품목 선택 탭 -->
+        <div class="card" style="margin-bottom:0">
+          <div class="card-hd" style="padding:8px 14px;flex-shrink:0">
+            <div class="card-title">📦 일룸 주력 품목 × 경쟁사 비교</div>
+          </div>
+          <div style="display:flex;gap:0;background:var(--bg);border-bottom:1px solid var(--border);padding:4px 10px;gap:4px">
+            <button id="iloom-prod-btn-online" class="btn btn-primary btn-sm" style="border-radius:6px;font-size:10px" onclick="setIloomProdTab('online')">🌐 온라인 #1</button>
+            <button id="iloom-prod-btn-offline" class="btn btn-ghost btn-sm" style="border-radius:6px;font-size:10px" onclick="setIloomProdTab('offline')">🏬 오프라인 #1</button>
+          </div>
+          <div id="iloom-prod-content" style="padding:10px 14px;font-size:11px"></div>
+        </div>
+        <!-- 리뷰 카드들 -->
+        <div class="card" style="margin-bottom:0;display:flex;flex-direction:column">
+          <div class="card-hd" style="flex-shrink:0">
+            <div class="card-title">소닉슬립 리뷰</div>
+            <span style="font-size:10px;color:var(--text3)">1,000건</span>
+          </div>
+          <div class="card-bd-sm" id="ss-review-summary" style="overflow-y:auto;font-size:11px"></div>
+        </div>
+        <div class="card" style="margin-bottom:0;display:flex;flex-direction:column">
+          <div class="card-hd" style="flex-shrink:0">
+            <div class="card-title">오키미키 리뷰</div>
+            <span style="font-size:10px;color:var(--text3)">581건</span>
+          </div>
+          <div class="card-bd-sm" id="ok-review-summary" style="overflow-y:auto;font-size:11px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- ══ TAB: 캡처 업로드 ══ -->
+    <div class="tab-panel active" id="tab-upload" style="overflow-y:auto">
+      <div class="alert" id="alert-upload"></div>
+      <div class="comp-bar" id="compbar-upload"></div>
+
+      <!-- Upload zone -->
+      <!-- 현재 선택 경쟁사 표시 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)" id="upload-comp-label">경쟁사를 선택해주세요</div>
+        <span style="font-size:11px;color:var(--text3)">저장 시 선택된 경쟁사 기준으로 저장됩니다</span>
+      </div>
+
+      <div class="upload-zone" id="upload-zone"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="this.classList.remove('drag-over');event.preventDefault();handleFiles(event.dataTransfer.files)">
+        <input type="file" accept="image/*" multiple onchange="handleFiles(this.files)"/>
+        <div class="upload-emoji">📸</div>
+        <div class="upload-title">캡처 이미지 한꺼번에 업로드</div>
+        <div class="upload-sub">여러 장 동시 선택 가능 · 드래그 &amp; 드롭도 OK</div>
+        <div class="ai-chip">✦ AI가 각 이미지에서 옵션·가격 자동 추출</div>
+      </div>
+
+      <!-- 업로드 진행 현황 -->
+      <div id="upload-progress-area" style="display:none;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--text)" id="upload-progress-title">이미지 분석 중...</span>
+          <span style="font-size:12px;color:var(--text3)" id="upload-progress-count"></span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="upload-progress-bar" style="height:100%;background:var(--blue);border-radius:2px;transition:width .3s;width:0%"></div>
+        </div>
+        <div id="upload-file-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <div class="preview-img-box" id="preview-box" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+
+      <!-- Parsed results -->
+      <div id="parsed-section" style="display:none">
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">AI가 추출한 옵션별 가격</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">확인 후 저장해주세요</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div class="field" style="flex-direction:row;align-items:center;gap:8px;margin:0">
+                <label style="white-space:nowrap;margin:0;font-size:11px">날짜</label>
+                <input type="date" id="save-date" style="width:140px;padding:5px 8px;font-size:12px"/>
+              </div>
+              <button class="btn btn-green" onclick="saveAllParsed()">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 8l4 4 8-8"/></svg>
+                전체 저장
+              </button>
+            </div>
+          </div>
+          <div class="card-bd">
+            <div id="parsed-list"></div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;color:var(--text2)">총 <strong id="parsed-count">0</strong>개 조합</span>
+              <button class="btn btn-ghost btn-sm" onclick="addManualRow()">+ 수동 추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: 옵션 가격표 ══ -->
+    <div class="tab-panel" id="tab-matrix" style="overflow-y:auto">
+      <div class="ph">
+        <div>
+          <div class="ph-title">옵션 가격표</div>
+          <div class="ph-sub">날짜별 옵션 조합 가격 비교</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV 내보내기</button>
+        </div>
+      </div>
+      <div class="alert" id="alert-matrix"></div>
+      <div class="comp-bar" id="compbar-matrix"></div>
+
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title" id="matrix-title">날짜 선택</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">셀 위 숫자 = 당일가 / 아래 화살표 = 전일 대비</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span id="matrix-fill-badge" style="font-size:11px;color:var(--text3)"></span>
+          </div>
+        </div>
+        <div class="card-bd-sm">
+          <div class="date-tabs" id="date-tabs"></div>
+          <div class="matrix-wrap" id="matrix-area">
+            <div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">
+              캡처를 업로드하면 옵션 가격표가 자동으로 완성됩니다
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: 가격 추이 ══ -->
+    <div class="tab-panel" id="tab-trend" style="overflow-y:auto">
+      <div class="ph">
+        <div>
+          <div class="ph-title">가격 추이</div>
+          <div class="ph-sub">옵션별 가격 변동 — 8월 출시 목표 기준</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
+      </div>
+      <div class="alert" id="alert-trend"></div>
+      <div class="comp-bar" id="compbar-trend"></div>
+
+      <!-- 옵션 선택 -->
+      <div class="card">
+        <div class="card-hd"><div class="card-title">추이 확인할 옵션 선택</div></div>
+        <div class="card-bd-sm">
+          <div id="trend-opt-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+      </div>
+
+      <div class="chart-card" id="trend-chart-card" style="display:none">
+        <div class="chart-lbl" id="trend-chart-lbl">가격 추이</div>
+        <canvas id="trend-chart" height="100"></canvas>
+      </div>
+
+      <!-- summary table -->
+      <div class="card">
+        <div class="card-hd"><div class="card-title">전체 변동 요약</div></div>
+        <div class="tbl-wrap">
+          <table class="log">
+            <thead><tr><th>옵션 조합</th><th>최초 가격</th><th>최근 가격</th><th>변동폭</th><th>변동률</th><th>마지막 변경일</th></tr></thead>
+            <tbody id="trend-summary-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- change log -->
+      <div class="card">
+        <div class="card-hd"><div class="card-title">날짜별 변경 로그</div></div>
+        <div class="tbl-wrap">
+          <table class="log">
+            <thead><tr><th>날짜</th><th>옵션 조합</th><th>가격</th><th>전일 대비</th></tr></thead>
+            <tbody id="trend-log-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  <!-- ══ TAB: 일룸 매출 분석 ══ -->
+  <div class="tab-panel" id="tab-iloom" style="overflow-y:auto">
+    <div class="ph">
+      <div><div class="ph-title">일룸 모션 매출 분석</div><div class="ph-sub">분기별 수주금액·판매수량 추이 — 2025Q1~2026Q2</div></div>
+    </div>
+    <!-- KPI -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="iloom-kpis"></div>
+    <!-- 뷰 전환 -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button id="il-btn-amt" class="btn btn-primary btn-sm" onclick="setIloomView('amount')">수주금액</button>
+      <button id="il-btn-qty" class="btn btn-ghost btn-sm" onclick="setIloomView('qty')">판매수량</button>
+      <button id="il-btn-series" class="btn btn-ghost btn-sm" onclick="setIloomView('series')">시리즈별</button>
+    </div>
+    <div class="chart-card" style="display:block" id="iloom-chart-card">
+      <div class="chart-lbl" id="iloom-chart-lbl">분기별 수주금액</div>
+      <canvas id="iloom-chart" height="110"></canvas>
+    </div>
+    <!-- 분기별 테이블 -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">분기별 상세</div></div>
+      <div class="tbl-wrap">
+        <table class="log">
+          <thead><tr><th>분기</th><th>수주금액</th><th>전분기比</th><th>판매수량</th><th>전분기比</th></tr></thead>
+          <tbody id="iloom-tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- 시리즈별 테이블 -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">시리즈별 최근 현황 (2026 Q2 기준)</div></div>
+      <div class="tbl-wrap">
+        <table class="log">
+          <thead><tr><th>시리즈</th><th>2026 Q2 수량</th><th>2026 Q2 금액</th><th>전분기 수량比</th><th>전분기 금액比</th></tr></thead>
+          <tbody id="iloom-series-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: 리뷰 분석 ══ -->
+  <div class="tab-panel" id="tab-review" style="overflow-y:auto">
+    <div class="ph">
+      <div><div class="ph-title">리뷰 분석</div><div class="ph-sub">엑셀 업로드 또는 텍스트 입력 → AI 월별 긍/부정 키워드 추출</div></div>
+    </div>
+    <div class="alert" id="alert-review"></div>
+    <div class="comp-bar" id="compbar-review"></div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd"><div class="card-title">리뷰 입력</div></div>
+      <div class="card-bd">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field"><label>월 (YYYY-MM)</label><input type="month" id="rv-month"/></div>
+          <div class="field"><label>출처</label><input type="text" id="rv-source" placeholder="아이템스카우트 / 네이버 쇼핑 등"/></div>
+        </div>
+
+        <!-- 입력 방식 탭 -->
+        <div style="display:flex;gap:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;width:fit-content;margin-bottom:14px">
+          <button id="rv-tab-excel" class="btn btn-primary btn-sm" style="border-radius:6px" onclick="switchRvInput('excel')">📊 엑셀 업로드</button>
+          <button id="rv-tab-text" class="btn btn-ghost btn-sm" style="border-radius:6px" onclick="switchRvInput('text')">✏️ 직접 입력</button>
+        </div>
+
+        <!-- 엑셀 패널 -->
+        <div id="rv-panel-excel">
+          <div style="border:2px dashed #c3d0e8;border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:.15s;background:#fafbff;position:relative;margin-bottom:12px"
+               ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-l)'"
+               ondragleave="this.style.borderColor='#c3d0e8';this.style.background='#fafbff'"
+               ondrop="this.style.borderColor='#c3d0e8';this.style.background='#fafbff';event.preventDefault();var f=event.dataTransfer.files[0];if(f)handleRvExcel(f)">
+            <input type="file" id="rv-excel-input" accept=".xlsx,.xls,.csv" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="var f=this.files[0];if(f)handleRvExcel(f)"/>
+            <div style="font-size:28px;margin-bottom:8px">📂</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px">엑셀 / CSV 파일 업로드</div>
+            <div style="font-size:12px;color:var(--text3)">.xlsx · .xls · .csv · 클릭 또는 드래그&amp;드롭</div>
+            <div style="display:inline-flex;align-items:center;gap:4px;margin-top:10px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:600;padding:3px 12px;border-radius:20px">리뷰 컬럼 자동 감지</div>
+          </div>
+
+          <div id="rv-excel-preview-wrap" style="display:none;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em">파일 미리보기 (상위 5행)</div>
+            <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:10px;max-height:150px;overflow-y:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <thead id="rv-excel-thead" style="background:#f8fafc"></thead>
+                <tbody id="rv-excel-tbody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+              <div class="field" style="flex:1;min-width:180px">
+                <label>리뷰 텍스트 컬럼</label>
+                <select id="rv-col-picker" style="background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:13px;padding:7px 11px;outline:none;width:100%"></select>
+              </div>
+              <div class="field" style="flex:1;min-width:160px">
+                <label>날짜 컬럼 <span style="color:var(--text3)">(선택)</span></label>
+                <select id="rv-date-col-picker" style="background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:13px;padding:7px 11px;outline:none;width:100%">
+                  <option value="">없음 — 위 월 기준</option>
+                </select>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="loadRvExcelToText()" style="margin-bottom:1px">불러오기 →</button>
+            </div>
+            <div id="rv-excel-loaded-info" style="display:none;margin-top:8px;font-size:12px;color:var(--green);font-weight:500"></div>
+          </div>
+        </div>
+
+        <!-- 텍스트 패널 -->
+        <div id="rv-panel-text" style="display:none">
+          <div class="field" style="margin-bottom:12px">
+            <label>리뷰 텍스트 (줄바꿈으로 구분)</label>
+            <textarea id="rv-text" rows="7" style="background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:13px;padding:8px 11px;outline:none;resize:vertical;width:100%" placeholder="리뷰를 붙여넣으세요 (한 줄에 하나씩)
+
+예)
+매트리스가 생각보다 편해요. 허리 통증이 줄었어요.
+배송이 느렸고 포장이 별로였습니다."></textarea>
+          </div>
+        </div>
+
+        <div id="rv-text-count" style="font-size:12px;color:var(--text3);margin-bottom:10px;display:none"></div>
+
+        <div class="ai-loading" id="ai-loading-review"><div class="spinner"></div>AI가 리뷰를 분석 중...</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary" onclick="analyzeReview()">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>AI 분석 시작
+          </button>
+          <span style="font-size:11px;color:var(--text3)">월별 탭에 자동 저장됩니다</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 결과 영역 헤더 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:14px;font-weight:700;color:var(--text)" id="rv-result-comp-label"></div>
+      <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px">
+        <button id="rv-view-month" class="btn btn-primary btn-sm" style="border-radius:6px" onclick="setRvView('month')">📅 월별 상세</button>
+        <button id="rv-view-trend" class="btn btn-ghost btn-sm" style="border-radius:6px" onclick="setRvView('trend')">📊 키워드 변동 추이</button>
+      </div>
+    </div>
+
+    <!-- 월별 상세 뷰 -->
+    <div id="rv-view-panel-month">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="rv-month-tabs"></div>
+      <div id="rv-result-area"><div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">리뷰를 분석하면 여기에 결과가 표시됩니다</div></div>
+    </div>
+
+    <!-- 키워드 변동 추이 뷰 -->
+    <div id="rv-view-panel-trend" style="display:none">
+      <div id="rv-trend-area"><div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">리뷰 데이터가 쌓이면 변동 추이가 표시됩니다</div></div>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STORAGE
+// DATA: { compName: { entries: [{date, items:[{optKey,price,origin}]}] } }
+// ══════════════════════════════════════════════════
+var COMP_KEY = 'sst_comp_v8';
+var DATA_KEY = 'sst_data_v8';
+
+function ls(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+function ss(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function getComps(){return ls(COMP_KEY)||['소닉슬립','오키미키'];}
+function getData(){return ls(DATA_KEY)||{};}
+function getCompData(comp){return (getData()[comp])||{entries:[]};}
+function saveCompData(comp,d){var all=getData();all[comp]=d;ss(DATA_KEY,all);}
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+var competitors=[];
+var tabComp={upload:'',matrix:'',trend:'',review:'',iloom:''};
+var currentTab='upload';
+var COLORS=['#4f7ef8','#38a169','#e53e3e','#d69e2e','#805ad5','#2c7a7b'];
+var colorMap={};
+function getColor(n){if(!colorMap[n])colorMap[n]=COLORS[Object.keys(colorMap).length%COLORS.length];return colorMap[n];}
+
+// parsed items from AI (temp state)
+var parsedItems=[]; // [{optKey:'헤드틸팅/단단한/퀸Q', price:1940000, origin:null}]
+
+// matrix view state
+var selectedDate='';
+
+// trend state
+var selectedTrendOpt='';
+var trendChart=null;
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+// ── API Key Management ──
+function saveApiKey(){
+  var val = document.getElementById('api-key-input').value.trim();
+  if(!val){ showApiKeyStatus('입력해주세요','warn'); return; }
+  if(!val.startsWith('sk-ant-')){ showApiKeyStatus('sk-ant- 로 시작해야 해요','warn'); return; }
+  localStorage.setItem('ss_api_key', val);
+  document.getElementById('api-key-input').value = '';
+  showApiKeyStatus('✓ 저장됨 · AI 기능 활성화','ok');
+}
+
+function getApiKey(){
+  return localStorage.getItem('ss_api_key') || '';
+}
+
+function showApiKeyStatus(msg, type){
+  var el = document.getElementById('api-key-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = type==='ok' ? '#68d391' : type==='warn' ? '#f6ad55' : 'rgba(255,255,255,.35)';
+}
+
+function initApiKeyUI(){
+  var key = getApiKey();
+  if(key) showApiKeyStatus('✓ API 키 설정됨','ok');
+  else showApiKeyStatus('⚠ API 키를 입력해주세요','warn');
+}
+
+function apiFetch(body){
+  var key = getApiKey();
+  if(!key){
+    return Promise.reject(new Error('API 키가 없습니다. 왼쪽 하단에서 Anthropic API 키를 입력해주세요.'));
+  }
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+function init(){
+  competitors=getComps();
+  if(!ls(COMP_KEY))ss(COMP_KEY,competitors);
+  var first=competitors[0]||'';
+  Object.keys(tabComp).forEach(function(t){tabComp[t]=first;});
+  renderSidebar();renderAllBars();
+  initApiKeyUI();
+  // 업로드 탭 초기 라벨
+  var uploadLabel=document.getElementById('upload-comp-label');
+  if(uploadLabel&&tabComp['upload']) uploadLabel.textContent='['+tabComp['upload']+'] 가격 업로드';
+  setDateDisplay();setInterval(setDateDisplay,60000);
+  document.getElementById('save-date').value=today();
+}
+function setDateDisplay(){
+  var d=new Date();
+  document.getElementById('header-date').textContent=d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+  document.getElementById('sb-date').textContent=d.toLocaleDateString('ko-KR');
+}
+function today(){return new Date().toISOString().slice(0,10);}
+function nowStr(){var d=new Date();return d.toLocaleDateString('ko-KR')+' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
+
+// ══════════════════════════════════════════════════
+// COMPETITORS
+// ══════════════════════════════════════════════════
+function addComp(){
+  var inp=document.getElementById('add-comp-input');
+  var name=inp.value.trim();
+  if(!name||competitors.indexOf(name)>=0)return;
+  competitors.push(name);ss(COMP_KEY,competitors);inp.value='';
+  renderSidebar();renderAllBars();
+}
+function removeComp(name){
+  if(!confirm('"'+name+'" 삭제할까요?'))return;
+  competitors=competitors.filter(function(c){return c!==name;});
+  ss(COMP_KEY,competitors);
+  Object.keys(tabComp).forEach(function(t){if(tabComp[t]===name)tabComp[t]=competitors[0]||'';});
+  renderSidebar();renderAllBars();
+}
+function renderSidebar(){
+  document.getElementById('comp-list').innerHTML=competitors.map(function(c){
+    return '<div class="comp-chip"><div class="comp-chip-name"><div class="comp-dot" style="background:'+getColor(c)+'"></div>'+c+'</div><button class="comp-chip-del" onclick="removeComp(\''+c+'\')">×</button></div>';
+  }).join('');
+}
+function renderBar(id,tab){
+  var el=document.getElementById(id);if(!el)return;
+  el.innerHTML=competitors.map(function(c){
+    var active=tabComp[tab]===c;
+    return '<button class="comp-bar-btn'+(active?' active':'')+'" onclick="selectCompTab(\''+c+'\',\''+tab+'\')">'+'<div class="comp-dot-sm" style="background:'+(active?'#fff':getColor(c))+'"></div>'+c+'</button>';
+  }).join('');
+}
+function renderAllBars(){['upload','matrix','trend','review'].forEach(function(t){renderBar('compbar-'+t,t);});}
+function selectCompTab(name,tab){
+  tabComp[tab]=name;renderBar('compbar-'+tab,tab);
+  if(tab==='upload'){
+    // 업로드 탭 경쟁사 라벨 업데이트
+    var uploadLabel=document.getElementById('upload-comp-label');
+    if(uploadLabel) uploadLabel.textContent='['+name+'] 가격 업로드';
+    // 이전 파싱 결과 초기화
+    parsedItems=[];
+    document.getElementById('parsed-section').style.display='none';
+    var progArea=document.getElementById('upload-progress-area');
+    if(progArea) progArea.style.display='none';
+    var previewBox=document.getElementById('preview-box');
+    if(previewBox) previewBox.innerHTML='';
+    showAlert('alert-upload','['+name+'] 선택됨. 이미지를 업로드해주세요.','info');
+  }
+  if(tab==='matrix'){selectedDate='';renderMatrixTab();}
+  if(tab==='trend'){renderTrendTab();}
+  if(tab==='review'){
+    selectedRvMonth='';
+    renderReviewResult(name);
+    if(rvView==='trend') renderRvTrend(name);
+    // 입력폼 초기화
+    var tEl=document.getElementById('rv-text');
+    if(tEl) tEl.value='';
+    var countEl=document.getElementById('rv-text-count');
+    if(countEl) countEl.style.display='none';
+    var previewWrap=document.getElementById('rv-excel-preview-wrap');
+    if(previewWrap) previewWrap.style.display='none';
+    rvExcelRows=[]; rvExcelHeaders=[];
+  }
+}
+
+// ══════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════
+var TAB_META={
+  upload:{title:'캡처 업로드',sub:'이미지 1장 → AI가 옵션 조합 전체 가격 한번에 추출'},
+  matrix:{title:'옵션 가격표',sub:'날짜별 옵션 조합 가격 비교'},
+  trend:{title:'가격 추이',sub:'옵션별 가격 변동 추이 — 8월 출시 목표 기준'},
+  compare:{title:'4자 경쟁사 비교',sub:'일룸 vs 소닉슬립 vs 오키미키 vs 슬로우베드 — 월별 판매량·평점·점유율'},
+  iloom:{title:'일룸 모션 매출 분석',sub:'분기별 수주금액·수량 추이 / 시리즈별 비교'},
+  review:{title:'리뷰 분석',sub:'경쟁사 네이버 리뷰 붙여넣기 → AI 월별 긍/부정 키워드 추출'},
+};
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.ni').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  currentTab=id;
+  var m=TAB_META[id]||{};
+  document.getElementById('topbar-title').textContent=m.title||id;
+  document.getElementById('topbar-sub').textContent=m.sub||'';
+  if(id==='compare')renderCompareTab();
+  if(id==='matrix')renderMatrixTab();
+  if(id==='trend')renderTrendTab();
+  if(id==='iloom')renderIloomTab();
+  if(id==='review')renderReviewTab();
+}
+
+// ══════════════════════════════════════════════════
+// IMAGE UPLOAD & AI EXTRACTION (다중 파일 지원)
+// ══════════════════════════════════════════════════
+var uploadQueue = [];   // 대기 파일 목록
+var uploadResults = {}; // 파일명 → 추출 결과
+var uploadDone = 0;
+
+function handleFiles(files){
+  if(!files || !files.length) return;
+  var arr = Array.prototype.slice.call(files).filter(function(f){ return f.type.startsWith('image/'); });
+  if(!arr.length) return;
+
+  parsedItems = [];
+  uploadResults = {};
+  uploadDone = 0;
+  uploadQueue = arr;
+
+  // 프리뷰 초기화
+  var previewBox = document.getElementById('preview-box');
+  previewBox.innerHTML = '';
+
+  // 진행 UI 표시
+  var progArea = document.getElementById('upload-progress-area');
+  progArea.style.display = 'block';
+  document.getElementById('upload-progress-title').textContent = '이미지 분석 중... (0/' + arr.length + ')';
+  document.getElementById('upload-progress-count').textContent = arr.length + '장';
+  document.getElementById('upload-progress-bar').style.width = '0%';
+  document.getElementById('parsed-section').style.display = 'none';
+
+  // 파일 목록 렌더
+  var fileList = document.getElementById('upload-file-list');
+  fileList.innerHTML = arr.map(function(f, i){
+    return '<div id="file-row-'+i+'" style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:var(--r-sm);background:var(--bg);border:1px solid var(--border)">'
+      + '<img id="file-thumb-'+i+'" style="width:40px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0"/>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</div>'
+      + '<div id="file-status-'+i+'" style="font-size:11px;color:var(--text3);margin-top:2px">대기 중...</div></div>'
+      + '<div id="file-badge-'+i+'" style="font-size:11px;font-weight:600;white-space:nowrap;color:var(--text3)">—</div>'
+      + '</div>';
+  }).join('');
+
+  // 썸네일 먼저 렌더 후 순차 분석
+  var readers = arr.map(function(f, i){
+    return new Promise(function(resolve){
+      var r = new FileReader();
+      r.onload = function(e){
+        var thumb = document.getElementById('file-thumb-'+i);
+        if(thumb) thumb.src = e.target.result;
+        // 프리뷰 박스에도 추가
+        var img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'max-height:80px;border-radius:var(--r-sm);border:1px solid var(--border);object-fit:contain';
+        previewBox.appendChild(img);
+        resolve({file:f, b64:e.target.result.split(',')[1], idx:i});
+      };
+      r.readAsDataURL(f);
+    });
+  });
+
+  Promise.all(readers).then(function(items){
+    // 순차 처리 (병렬로 하면 rate limit 위험)
+    return items.reduce(function(chain, item){
+      return chain.then(function(){ return analyzeOneImage(item); });
+    }, Promise.resolve());
+  }).then(function(){
+    // 전체 완료
+    document.getElementById('upload-progress-title').textContent = '✓ 분석 완료! 확인 후 저장해주세요.';
+    document.getElementById('upload-progress-bar').style.width = '100%';
+    document.getElementById('upload-progress-bar').style.background = 'var(--green)';
+    renderParsedList();
+    document.getElementById('parsed-section').style.display = 'block';
+    var comp=tabComp['upload'];
+  showAlert('alert-upload', '✓ ['+comp+'] ' + arr.length + '장 분석 완료 — 총 ' + parsedItems.length + '개 옵션 조합 추출됐어요.', 'success');
+  // 저장 버튼에도 경쟁사 표시
+  var saveBtn=document.querySelector('[onclick="saveAllParsed()"]');
+  if(saveBtn) saveBtn.textContent='['+comp+'] 전체 저장';
+  });
+}
+
+function analyzeOneImage(item){
+  var i = item.idx;
+  var statusEl = document.getElementById('file-status-'+i);
+  var badgeEl = document.getElementById('file-badge-'+i);
+  var rowEl = document.getElementById('file-row-'+i);
+
+  if(statusEl) statusEl.textContent = 'AI 분석 중...';
+  if(rowEl) rowEl.style.borderColor = 'var(--blue)';
+
+  var prompt = '이 이미지는 네이버 쇼핑 상품 페이지입니다. 보이는 모든 옵션 조합과 가격을 추출해주세요. JSON 배열만 응답, 다른 텍스트 없음. [{"opt":"옵션조합명","price":숫자,"origin":정가숫자없으면null}]';
+
+  return apiFetch({
+      model:'claude-sonnet-4-20250514', max_tokens:2000,
+      messages:[{role:'user', content:[
+        {type:'image', source:{type:'base64', media_type:item.file.type, data:item.b64}},
+        {type:'text', text:prompt}
+      ]}]
+    })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var text = '';
+    if(data.content) for(var j=0;j<data.content.length;j++) if(data.content[j].type==='text'){text=data.content[j].text;break;}
+    var clean = text.replace(/```json|```/g,'').trim();
+    // JSON 배열만 추출 (앞뒤 텍스트 제거)
+    var bracketStart = clean.indexOf('[');
+    var bracketEnd = clean.lastIndexOf(']');
+    if(bracketStart >= 0 && bracketEnd > bracketStart){
+      clean = clean.slice(bracketStart, bracketEnd+1);
+    }
+    var arr = JSON.parse(clean);
+    if(!Array.isArray(arr)) throw new Error('JSON 배열이 아닙니다');
+    var items = arr.map(function(it){ return {optKey:it.opt||'', price:it.price||0, origin:it.origin||null}; });
+    items = items.filter(function(it){ return it.optKey && it.price > 0; });
+
+    // 중복 옵션키 병합 (같은 옵션 여러 이미지에 있을 때 최신것으로)
+    items.forEach(function(it){
+      var dup = parsedItems.findIndex(function(p){ return p.optKey === it.optKey; });
+      if(dup >= 0) parsedItems[dup] = it;
+      else parsedItems.push(it);
+    });
+
+    if(statusEl) statusEl.textContent = items.length + '개 옵션 추출';
+    if(badgeEl){ badgeEl.textContent = items.length + '개'; badgeEl.style.color = 'var(--green)'; }
+    if(rowEl) rowEl.style.borderColor = '#9ae6b4';
+  })
+  .catch(function(err){
+    if(statusEl) statusEl.textContent = '오류: ' + err.message;
+    if(badgeEl){ badgeEl.textContent = '실패'; badgeEl.style.color = 'var(--red)'; }
+    if(rowEl) rowEl.style.borderColor = '#feb2b2';
+  })
+  .finally(function(){
+    uploadDone++;
+    var pct = Math.round(uploadDone / uploadQueue.length * 100);
+    var bar = document.getElementById('upload-progress-bar');
+    if(bar) bar.style.width = pct + '%';
+    var title = document.getElementById('upload-progress-title');
+    if(title) title.textContent = '이미지 분석 중... (' + uploadDone + '/' + uploadQueue.length + ')';
+  });
+}
+
+function renderParsedList(){
+  var list=document.getElementById('parsed-list');
+  document.getElementById('parsed-count').textContent=parsedItems.length;
+  if(!parsedItems.length){
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">추출된 항목이 없습니다. 수동으로 추가해주세요.</div>';
+    return;
+  }
+  list.innerHTML=parsedItems.map(function(item,i){
+    return '<div class="parsed-item" id="parsed-item-'+i+'">'
+      +'<input type="text" value="'+escHtml(item.optKey)+'" onchange="parsedItems['+i+'].optKey=this.value" style="flex:1;background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:12px;padding:5px 10px;outline:none;min-width:0"/>'
+      +'<input type="number" value="'+item.price+'" onchange="parsedItems['+i+'].price=Number(this.value)" style="width:120px;background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--blue);font-family:var(--font);font-size:13px;font-weight:700;padding:5px 10px;outline:none;text-align:right"/>'
+      +'<span style="font-size:12px;color:var(--text2)">원</span>'
+      +'<button class="parsed-item-del" onclick="removeParsedItem('+i+')">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function removeParsedItem(i){
+  parsedItems.splice(i,1);renderParsedList();
+}
+
+function addManualRow(){
+  parsedItems.push({optKey:'',price:0,origin:null});
+  renderParsedList();
+  // focus last input
+  setTimeout(function(){
+    var inputs=document.querySelectorAll('.parsed-item input[type="text"]');
+    if(inputs.length)inputs[inputs.length-1].focus();
+  },50);
+}
+
+function saveAllParsed(){
+  var date=document.getElementById('save-date').value;
+  if(!date){showAlert('alert-upload','날짜를 선택해주세요.','warn');return;}
+  var valid=parsedItems.filter(function(it){return it.optKey&&it.price;});
+  if(!valid.length){showAlert('alert-upload','저장할 항목이 없습니다.','warn');return;}
+  var comp=tabComp['upload'];
+  var data=getCompData(comp);
+  // remove existing entry for this date
+  data.entries=data.entries.filter(function(e){return e.date!==date;});
+  data.entries.push({date:date,items:valid.map(function(it){return{optKey:it.optKey,price:it.price,origin:it.origin};})});
+  data.entries.sort(function(a,b){return a.date.localeCompare(b.date);});
+  saveCompData(comp,data);
+  parsedItems=[];
+  document.getElementById('parsed-section').style.display='none';
+  document.getElementById('preview-box').style.display='none';
+  showAlert('alert-upload','✓ ['+comp+'] '+date+' — '+valid.length+'개 옵션 저장 완료!','success');
+  // auto switch to matrix
+  selectedDate=date;
+}
+
+// ══════════════════════════════════════════════════
+// MATRIX TAB
+// ══════════════════════════════════════════════════
+function renderMatrixTab(){
+  var comp=tabComp['matrix'];
+  var data=getCompData(comp);
+  var entries=data.entries||[];
+  var area=document.getElementById('matrix-area');
+  var dateTabs=document.getElementById('date-tabs');
+
+  if(!entries.length){
+    dateTabs.innerHTML='';
+    area.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">['+comp+'] 저장된 데이터가 없습니다</div>';
+    document.getElementById('matrix-title').textContent='날짜 없음';
+    document.getElementById('matrix-fill-badge').textContent='';
+    return;
+  }
+
+  var dates=entries.map(function(e){return e.date;});
+  if(!selectedDate||dates.indexOf(selectedDate)<0)selectedDate=dates[dates.length-1];
+
+  // date tabs
+  dateTabs.innerHTML=dates.map(function(d){
+    return '<button class="date-tab has-data'+(d===selectedDate?' active':'')+'" onclick="selectedDate=\''+d+'\';renderMatrixTab()">'+d+'</button>';
+  }).join('');
+
+  // get current and prev entry
+  var curEntry=entries.filter(function(e){return e.date===selectedDate;})[0];
+  var curIdx=dates.indexOf(selectedDate);
+  var prevEntry=curIdx>0?entries[curIdx-1]:null;
+
+  document.getElementById('matrix-title').textContent='['+comp+'] '+selectedDate+' 기준';
+
+  if(!curEntry){area.innerHTML='';return;}
+
+  // collect all unique opt keys across all dates (for consistent table)
+  var allOpts=[];
+  entries.forEach(function(e){
+    e.items.forEach(function(it){
+      if(allOpts.indexOf(it.optKey)<0)allOpts.push(it.optKey);
+    });
+  });
+
+  // Try to detect dimension structure from opt keys (split by ' / ')
+  // Build a price lookup for current and prev date
+  var curPrices={};
+  curEntry.items.forEach(function(it){curPrices[it.optKey]=it.price;});
+  var prevPrices={};
+  if(prevEntry)prevEntry.items.forEach(function(it){prevPrices[it.optKey]=it.price;});
+
+  // Check if options have a consistent pattern (x / y / z)
+  var sampleParts=allOpts[0]?allOpts[0].split(' / '):[];
+  var numDims=sampleParts.length;
+  var consistent=allOpts.every(function(o){return o.split(' / ').length===numDims;});
+
+  document.getElementById('matrix-fill-badge').textContent=curEntry.items.length+'/'+allOpts.length+' 조합 입력';
+
+  var html='';
+  if(numDims>=2&&consistent){
+    // Group by first dim as row header, last dim as column header
+    // dims 0..n-2 = row grouping, dim n-1 = columns
+    var colDimVals=[];
+    allOpts.forEach(function(o){var parts=o.split(' / ');var last=parts[parts.length-1];if(colDimVals.indexOf(last)<0)colDimVals.push(last);});
+
+    // build row keys (all dims except last)
+    var rowKeys=[];
+    allOpts.forEach(function(o){var parts=o.split(' / ');var rk=parts.slice(0,parts.length-1).join(' / ');if(rowKeys.indexOf(rk)<0)rowKeys.push(rk);});
+
+    html='<table class="matrix-tbl"><thead><tr><th class="row-head">옵션</th>';
+    colDimVals.forEach(function(c){html+='<th>'+c+'</th>';});
+    html+='</tr></thead><tbody>';
+
+    rowKeys.forEach(function(rk){
+      html+='<tr><td class="row-label">'+rk+'</td>';
+      colDimVals.forEach(function(c){
+        var fullKey=rk+' / '+c;
+        var price=curPrices[fullKey];
+        var prevPrice=prevPrices[fullKey];
+        if(price){
+          var diffHtml='';
+          if(prevPrice&&price!==prevPrice){
+            var d=price-prevPrice;
+            var cls=d>0?'up':'dn';
+            diffHtml='<span class="diff '+cls+'">'+(d>0?'▲':'▼')+' '+Math.abs(d).toLocaleString()+'원</span>';
+          } else if(prevPrice){
+            diffHtml='<span class="diff" style="color:var(--text3)">변동없음</span>';
+          }
+          html+='<td class="price">'+Number(price).toLocaleString()+'원'+diffHtml+'</td>';
+        } else {
+          html+='<td class="price empty">—</td>';
+        }
+      });
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  } else {
+    // flat list table
+    html='<table class="matrix-tbl"><thead><tr><th class="row-head">옵션 조합</th><th>판매가</th><th>전일 대비</th></tr></thead><tbody>';
+    allOpts.forEach(function(opt){
+      var price=curPrices[opt];
+      var prevPrice=prevPrices[opt];
+      var diffHtml='';
+      if(price&&prevPrice&&price!==prevPrice){
+        var d=price-prevPrice;
+        var cls=d>0?'up':'dn';
+        diffHtml='<span class="diff '+cls+'">'+(d>0?'▲':'▼')+' '+Math.abs(d).toLocaleString()+'원</span>';
+      } else if(price&&prevPrice){
+        diffHtml='<span class="diff" style="color:var(--text3)">변동없음</span>';
+      }
+      html+='<tr><td class="row-label">'+opt+'</td>';
+      html+='<td class="price'+(price?'':' empty')+'">'+( price?Number(price).toLocaleString()+'원':'—')+diffHtml+'</td>';
+      html+='<td>'+(price&&prevPrice&&price!==prevPrice?'<span class="badge '+(price>prevPrice?'bw':'bg')+'">'+( price>prevPrice?'▲인상':'▼인하')+'</span>':'')+'</td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  }
+
+  area.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════
+// TREND TAB
+// ══════════════════════════════════════════════════
+function renderTrendTab(){
+  var comp=tabComp['trend'];
+  var data=getCompData(comp);
+  var entries=data.entries||[];
+
+  // collect all opts
+  var allOpts=[];
+  entries.forEach(function(e){e.items.forEach(function(it){if(allOpts.indexOf(it.optKey)<0)allOpts.push(it.optKey);});});
+
+  // render opt selector chips
+  var optList=document.getElementById('trend-opt-list');
+  if(!allOpts.length){
+    optList.innerHTML='<span style="font-size:13px;color:var(--text3)">저장된 데이터가 없습니다</span>';
+    document.getElementById('trend-summary-body').innerHTML='<tr><td colspan="6" class="empty-row">데이터 없음</td></tr>';
+    document.getElementById('trend-log-body').innerHTML='<tr><td colspan="4" class="empty-row">데이터 없음</td></tr>';
+    document.getElementById('trend-chart-card').style.display='none';
+    return;
+  }
+  if(!selectedTrendOpt||allOpts.indexOf(selectedTrendOpt)<0)selectedTrendOpt=allOpts[0];
+
+  window._trendOpts = allOpts;
+  optList.innerHTML=allOpts.map(function(o,i){
+    var active=o===selectedTrendOpt;
+    var bdr=active?'var(--blue)':'var(--border2)';
+    var bg=active?'var(--blue)':'var(--card)';
+    var col=active?'#fff':'var(--text2)';
+    return '<button style="padding:5px 14px;border-radius:20px;border:1.5px solid '+bdr+';background:'+bg+';color:'+col+';font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font);transition:.12s;white-space:nowrap" onclick="selectTrendOpt('+i+')">'+o+'</button>';
+  }).join('');
+
+  // Build timeline for selected opt
+  var timeline=[];
+  entries.forEach(function(e){
+    var it=e.items.filter(function(i){return i.optKey===selectedTrendOpt;})[0];
+    if(it)timeline.push({date:e.date,price:it.price});
+  });
+
+  // chart
+  renderTrendChart(timeline, selectedTrendOpt);
+
+  // summary table
+  var summaryBody=document.getElementById('trend-summary-body');
+  var summaryRows='';
+  allOpts.forEach(function(opt){
+    var pts=[];
+    entries.forEach(function(e){var it=e.items.filter(function(i){return i.optKey===opt;})[0];if(it)pts.push({date:e.date,price:it.price});});
+    if(!pts.length)return;
+    var first=pts[0],last=pts[pts.length-1];
+    var diff=last.price-first.price;
+    var pct=((diff/first.price)*100).toFixed(1);
+    // find last change date
+    var lastChange=first.date;
+    for(var i=1;i<pts.length;i++){if(pts[i].price!==pts[i-1].price){lastChange=pts[i].date;}}
+    var diffColor=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)';
+    summaryRows+='<tr>'
+      +'<td class="v" style="font-size:12px">'+opt+'</td>'
+      +'<td class="v">'+Number(first.price).toLocaleString()+'원</td>'
+      +'<td class="v">'+Number(last.price).toLocaleString()+'원</td>'
+      +'<td style="color:'+diffColor+';font-weight:600">'+(diff===0?'—':(diff>0?'+':'')+diff.toLocaleString()+'원')+'</td>'
+      +'<td style="color:'+diffColor+';font-weight:600">'+(diff===0?'—':(diff>0?'+':'')+pct+'%')+'</td>'
+      +'<td style="color:var(--text3);font-size:12px">'+lastChange+'</td>'
+      +'</tr>';
+  });
+  summaryBody.innerHTML=summaryRows||'<tr><td colspan="6" class="empty-row">데이터 없음</td></tr>';
+
+  // change log (all dates, all opts, only changed)
+  var logBody=document.getElementById('trend-log-body');
+  var logRows='';
+  entries.slice().reverse().forEach(function(e,ri,arr){
+    var prevEntry=arr[ri+1];
+    e.items.forEach(function(it){
+      var prevIt=prevEntry?prevEntry.items.filter(function(i){return i.optKey===it.optKey;})[0]:null;
+      var diff=prevIt?it.price-prevIt.price:null;
+      var diffHtml=diff===null?'<span style="color:var(--text3)">첫 입력</span>':(diff===0?'<span style="color:var(--text3)">변동없음</span>':'<span style="color:'+(diff>0?'var(--red)':'var(--green)')+';font-weight:600">'+(diff>0?'▲':'▼')+' '+Math.abs(diff).toLocaleString()+'원</span>');
+      var isChanged=diff===null||diff!==0;
+      if(isChanged){
+        logRows+='<tr><td style="color:var(--text3);font-size:11px">'+e.date+'</td><td style="font-size:12px">'+it.optKey+'</td><td class="v">'+Number(it.price).toLocaleString()+'원</td><td>'+diffHtml+'</td></tr>';
+      }
+    });
+  });
+  logBody.innerHTML=logRows||'<tr><td colspan="4" class="empty-row">가격 변동 없음</td></tr>';
+}
+
+function selectTrendOpt(idx){
+  if(window._trendOpts&&window._trendOpts[idx]!==undefined){
+    selectedTrendOpt=window._trendOpts[idx];
+    renderTrendTab();
+  }
+}
+
+function renderTrendChart(timeline,optName){
+  var card=document.getElementById('trend-chart-card');
+  if(timeline.length<2){card.style.display='none';return;}
+  card.style.display='block';
+  document.getElementById('trend-chart-lbl').textContent=optName+' — 가격 추이';
+  var ctx=document.getElementById('trend-chart').getContext('2d');
+  if(trendChart)trendChart.destroy();
+  var color=getColor(tabComp['trend']);
+  trendChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:timeline.map(function(t){return t.date;}),
+      datasets:[{
+        data:timeline.map(function(t){return t.price;}),
+        borderColor:color,backgroundColor:color+'18',borderWidth:2,
+        pointBackgroundColor:color,pointRadius:4,fill:true,tension:0.3,
+        stepped:'before'
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.raw.toLocaleString()+'원';}}}},
+      scales:{
+        x:{ticks:{color:'#a0aec0',font:{size:11}},grid:{color:'#e6eaf4'}},
+        y:{ticks:{color:'#a0aec0',font:{size:11},callback:function(v){return v.toLocaleString()+'원';}},grid:{color:'#e6eaf4'}}
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════════════
+function exportCSV(){
+  var comp=tabComp[currentTab]||tabComp['upload'];
+  var data=getCompData(comp);
+  if(!data.entries||!data.entries.length){alert('데이터 없음');return;}
+  var rows=['경쟁사,날짜,옵션조합,판매가,정가'];
+  data.entries.forEach(function(e){
+    e.items.forEach(function(it){
+      rows.push([comp,e.date,'"'+it.optKey+'"',it.price,it.origin||''].join(','));
+    });
+  });
+  var blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='sonic_price_'+comp+'_'+today()+'.csv';a.click();
+}
+
+// ══════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════
+function showAlert(id,msg,type){
+  var box=document.getElementById(id);if(!box)return;
+  box.className='alert '+type;box.textContent=msg;box.style.display='block';
+  clearTimeout(box._t);box._t=setTimeout(function(){box.style.display='none';},6000);
+}
+function clearAll(){
+  if(!confirm('모든 데이터를 초기화할까요?'))return;
+  [COMP_KEY,DATA_KEY].forEach(function(k){localStorage.removeItem(k);});
+  location.reload();
+}
+
+// ── SEED DATA (pre-loaded history) ──
+(function(){
+  var SEED = {"sst_comp_v8": ["소닉슬립", "오키미키"], "sst_data_v8": {"소닉슬립": {"entries": [
+    {"date": "2026-05-27", "items": [
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 퀸(Q)", "price": 2190000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 퀸(Q)", "price": 1940000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 퀸(Q)", "price": 1790000, "origin": null},
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1940000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1490000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1790000, "origin": null},
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 싱글(S)", "price": 1840000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 싱글(S)", "price": 1660000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 싱글(S)", "price": 1390000, "origin": null}
+    ]},
+    {"date": "2026-06-04", "items": [
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 퀸(Q)", "price": 2190000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 퀸(Q)", "price": 1940000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 퀸(Q)", "price": 1790000, "origin": null},
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1940000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1490000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 슈퍼싱글(SS)", "price": 1790000, "origin": null},
+      {"optKey": "NEW쉬프트 / 단단한 하드타입 / 싱글(S)", "price": 1840000, "origin": null},
+      {"optKey": "헤드틸팅 / 단단한 하드타입 / 싱글(S)", "price": 1660000, "origin": null},
+      {"optKey": "베이직 / 단단한 하드타입 / 싱글(S)", "price": 1390000, "origin": null}
+    ]}
+  ]}, "오키미키": {"entries": []}}};
+  // 경쟁사 목록: 없으면 세팅
+  if(!localStorage.getItem('sst_comp_v8')){
+    localStorage.setItem('sst_comp_v8', JSON.stringify(SEED['sst_comp_v8']));
+  }
+  // 가격 데이터: 없으면 전체 세팅, 있으면 누락된 날짜 항목만 병합
+  var existingRaw = localStorage.getItem('sst_data_v8');
+  if(!existingRaw){
+    localStorage.setItem('sst_data_v8', JSON.stringify(SEED['sst_data_v8']));
+  } else {
+    try {
+      var existing = JSON.parse(existingRaw);
+      var seedData = SEED['sst_data_v8'];
+      var changed = false;
+      Object.keys(seedData).forEach(function(comp){
+        if(!existing[comp]) { existing[comp] = seedData[comp]; changed=true; return; }
+        var existDates = (existing[comp].entries||[]).map(function(e){return e.date;});
+        (seedData[comp].entries||[]).forEach(function(entry){
+          if(existDates.indexOf(entry.date) < 0){
+            existing[comp].entries.push(entry);
+            existing[comp].entries.sort(function(a,b){return a.date.localeCompare(b.date);});
+            changed = true;
+          }
+        });
+      });
+      if(changed) localStorage.setItem('sst_data_v8', JSON.stringify(existing));
+    } catch(e){}
+  }
+})();
+
+// ══════════════════════════════════════════════════
+// ILOOM DATA
+// ══════════════════════════════════════════════════
+var ILOOM = {"quarterly":[{"label":"2025 1분기","amt":939037286,"qty":4966},{"label":"2025 2분기","amt":828161503,"qty":4520},{"label":"2025 3분기","amt":823981410,"qty":4473},{"label":"2025 4분기","amt":718083420,"qty":3972},{"label":"2026 1분기","amt":904268050,"qty":4933},{"label":"2026 2분기","amt":1034631553,"qty":5757}],"topSeries":["드로우","바젤","아르지안","틴즈룸공통","어바니"],"sq":[{"s":"드로우","l":"2025 1분기","q":1781,"a":257509184},{"s":"드로우","l":"2025 2분기","q":1422,"a":197035876},{"s":"드로우","l":"2025 3분기","q":1680,"a":243459624},{"s":"드로우","l":"2025 4분기","q":1571,"a":238766063},{"s":"드로우","l":"2026 1분기","q":2125,"a":318495047},{"s":"드로우","l":"2026 2분기","q":2539,"a":391110046},{"s":"바젤","l":"2025 1분기","q":1017,"a":167495413},{"s":"바젤","l":"2025 2분기","q":1071,"a":175628181},{"s":"바젤","l":"2025 3분기","q":1150,"a":189206057},{"s":"바젤","l":"2025 4분기","q":1292,"a":219123347},{"s":"바젤","l":"2026 1분기","q":1200,"a":197417367},{"s":"바젤","l":"2026 2분기","q":1601,"a":247134855},{"s":"아르지안","l":"2025 1분기","q":765,"a":149290930},{"s":"아르지안","l":"2025 2분기","q":977,"a":186751115},{"s":"아르지안","l":"2025 3분기","q":722,"a":146749070},{"s":"아르지안","l":"2025 4분기","q":417,"a":83735845},{"s":"아르지안","l":"2026 1분기","q":912,"a":183520220},{"s":"아르지안","l":"2026 2분기","q":980,"a":214126201},{"s":"어바니","l":"2025 1분기","q":424,"a":130929246},{"s":"어바니","l":"2025 2분기","q":332,"a":103977204},{"s":"어바니","l":"2025 3분기","q":307,"a":99085745},{"s":"어바니","l":"2025 4분기","q":250,"a":72466169},{"s":"어바니","l":"2026 1분기","q":266,"a":87190474},{"s":"어바니","l":"2026 2분기","q":248,"a":72269876},{"s":"틴즈룸공통","l":"2025 1분기","q":647,"a":168555385},{"s":"틴즈룸공통","l":"2025 2분기","q":508,"a":130562163},{"s":"틴즈룸공통","l":"2025 3분기","q":489,"a":119501335},{"s":"틴즈룸공통","l":"2025 4분기","q":331,"a":79432304},{"s":"틴즈룸공통","l":"2026 1분기","q":365,"a":102816173},{"s":"틴즈룸공통","l":"2026 2분기","q":352,"a":93192787}]};
+
+var iloomView='amount';
+var iloomChart=null;
+var SC=['#4f7ef8','#38a169','#e53e3e','#d69e2e','#805ad5'];
+
+function fmtM(v){return (v/1e8).toFixed(1)+'억';}
+
+function setIloomView(v){
+  iloomView=v;
+  ['amt','qty','series'].forEach(function(k){
+    var b=document.getElementById('il-btn-'+k);
+    if(!b)return;
+    b.className='btn btn-sm '+(k===v?'btn-primary':'btn-ghost');
+  });
+  drawIloom();
+}
+
+function renderIloomTab(){
+  setIloomView(iloomView);
+}
+
+function drawIloom(){
+  var q=ILOOM.quarterly;
+  var last=q[q.length-1],prev=q[q.length-2];
+  var totAmt=q.reduce(function(s,r){return s+r.amt;},0);
+  var totQty=q.reduce(function(s,r){return s+r.qty;},0);
+  function diffSpan(d,isAmt){
+    var c=d>0?'var(--red)':d<0?'var(--green)':'var(--text3)';
+    return '<span style="font-size:11px;color:'+c+';">'+(d>=0?'▲':'▼')+' '+(isAmt?fmtM(Math.abs(d)):Math.abs(d).toLocaleString())+'</span>';
+  }
+  var kpiEl=document.getElementById('iloom-kpis');
+  if(kpiEl)kpiEl.innerHTML=
+    kpiCard('전체 총 매출',fmtM(totAmt),'2025Q1~2026Q2')+
+    kpiCard('전체 총 수량',totQty.toLocaleString()+'건','2025Q1~2026Q2')+
+    kpiCard('최근 분기 매출',fmtM(last.amt),last.label+' '+diffSpan(last.amt-prev.amt,true))+
+    kpiCard('최근 분기 수량',last.qty.toLocaleString()+'건',last.label+' '+diffSpan(last.qty-prev.qty,false));
+
+  var ctx=document.getElementById('iloom-chart');
+  if(!ctx)return;
+  if(iloomChart)iloomChart.destroy();
+
+  if(iloomView==='series'){
+    document.getElementById('iloom-chart-lbl').textContent='시리즈별 분기 판매수량';
+    var labels=q.map(function(r){return r.label;});
+    var datasets=ILOOM.topSeries.map(function(s,si){
+      var data=labels.map(function(lb){
+        var row=ILOOM.sq.filter(function(r){return r.s===s&&r.l===lb;})[0];
+        return row?row.q:0;
+      });
+      return{label:s,data:data,borderColor:SC[si],backgroundColor:SC[si]+'22',borderWidth:2,pointRadius:3,fill:false,tension:0.3};
+    });
+    iloomChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{ticks:{color:'#a0aec0',font:{size:11}},grid:{color:'#e6eaf4'}},y:{ticks:{color:'#a0aec0',font:{size:11},callback:function(v){return v.toLocaleString()+'건';}},grid:{color:'#e6eaf4'}}}}});
+  } else {
+    var isAmt=iloomView==='amount';
+    document.getElementById('iloom-chart-lbl').textContent='분기별 '+(isAmt?'수주금액':'판매수량');
+    var bgC=q.map(function(r){return r.label.indexOf('2026')>=0?'#4f7ef8cc':'#4f7ef866';});
+    iloomChart=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:q.map(function(r){return r.label;}),datasets:[{data:q.map(function(r){return isAmt?r.amt:r.qty;}),backgroundColor:bgC,borderColor:'#4f7ef8',borderWidth:1.5,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#a0aec0',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#a0aec0',font:{size:11},callback:function(v){return isAmt?(v/1e8).toFixed(0)+'억':v.toLocaleString();}},grid:{color:'#e6eaf4'}}}}});
+  }
+
+  var tbody=document.getElementById('iloom-tbl-body');
+  if(tbody)tbody.innerHTML=q.map(function(r,i){
+    var pr=i>0?q[i-1]:null;
+    function chgSpan(c,p){if(!p)return '<span style="color:var(--text3)">—</span>';var d=c-p;var pct=((d/p)*100).toFixed(1);var col=d>0?'var(--red)':d<0?'var(--green)':'var(--text3)';return '<span style="color:'+col+';font-weight:600">'+(d>=0?'▲':'▼')+pct+'%</span>';}
+    return '<tr><td class="v">'+r.label+'</td><td class="v">'+fmtM(r.amt)+'</td><td>'+chgSpan(r.amt,pr?pr.amt:null)+'</td><td class="v">'+r.qty.toLocaleString()+'건</td><td>'+chgSpan(r.qty,pr?pr.qty:null)+'</td></tr>';
+  }).join('');
+
+  var sbody=document.getElementById('iloom-series-body');
+  if(sbody)sbody.innerHTML=ILOOM.topSeries.map(function(s){
+    function sr(lb){return ILOOM.sq.filter(function(r){return r.s===s&&r.l===lb;})[0]||null;}
+    var cur=sr('2026 2분기'),prv=sr('2026 1분기');
+    if(!cur)return '';
+    function pct(c,p,f){if(!p)return '—';var d=c[f]-p[f];var pv=((d/p[f])*100).toFixed(1);var col=d>0?'var(--red)':d<0?'var(--green)':'var(--text3)';return '<span style="color:'+col+';font-weight:600">'+(d>=0?'▲':'▼')+pv+'%</span>';}
+    return '<tr><td class="v">'+s+'</td><td class="v">'+cur.q.toLocaleString()+'건</td><td class="v">'+fmtM(cur.a)+'</td><td>'+pct(cur,prv,'q')+'</td><td>'+pct(cur,prv,'a')+'</td></tr>';
+  }).join('');
+}
+
+function kpiCard(label,value,sub){
+  return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">'+label+'</div><div style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.02em">'+value+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+sub+'</div></div>';
+}
+
+// ══════════════════════════════════════════════════
+// REVIEW
+// ══════════════════════════════════════════════════
+var RV_KEY='sst_rv_v8';
+var selectedRvMonth='';
+function getRvAll(){try{return JSON.parse(localStorage.getItem(RV_KEY)||'{}');}catch(e){return {};}}
+function getRv(comp){return getRvAll()[comp]||[];}
+function saveRv(comp,arr){var d=getRvAll();d[comp]=arr;localStorage.setItem(RV_KEY,JSON.stringify(d));}
+
+function renderReviewTab(){
+  // 선택된 경쟁사 없으면 첫번째로 초기화
+  if(!tabComp['review']&&competitors.length) tabComp['review']=competitors[0];
+  renderBar('compbar-review','review');
+  var comp=tabComp['review']||'';
+  renderReviewResult(comp);
+  var now=new Date();
+  var mEl=document.getElementById('rv-month');
+  if(mEl&&!mEl.value) mEl.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  // 현재 선택 경쟁사 표시
+  updateRvCompLabel(comp);
+  if(rvView==='trend') renderRvTrend(comp);
+}
+
+function updateRvCompLabel(comp){
+  // 카드 헤더에 현재 경쟁사 표시
+  var hd=document.querySelector('#tab-review .card-hd .card-title');
+  if(hd) hd.textContent='['+comp+'] 리뷰 입력';
+}
+
+// ── 리뷰 엑셀 업로드 ──
+var rvExcelRows=[], rvExcelHeaders=[];
+
+function switchRvInput(mode){
+  var panels={excel:document.getElementById('rv-panel-excel'),text:document.getElementById('rv-panel-text')};
+  var btns={excel:document.getElementById('rv-tab-excel'),text:document.getElementById('rv-tab-text')};
+  Object.keys(panels).forEach(function(k){
+    if(panels[k]) panels[k].style.display=(k===mode?'block':'none');
+    if(btns[k]) btns[k].className='btn btn-sm '+(k===mode?'btn-primary':'btn-ghost');
+  });
+}
+
+function handleRvExcel(file){
+  if(typeof XLSX==='undefined'){showAlert('alert-review','SheetJS 없음','warn');return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var data=new Uint8Array(e.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(!json.length){showAlert('alert-review','파일이 비어있습니다.','warn');return;}
+    rvExcelHeaders=json[0].map(function(h){return String(h);});
+    rvExcelRows=json.slice(1);
+
+    var thead=document.getElementById('rv-excel-thead');
+    var tbody=document.getElementById('rv-excel-tbody');
+    if(thead) thead.innerHTML='<tr>'+rvExcelHeaders.map(function(h){
+      return '<th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap">'+h+'</th>';
+    }).join('')+'</tr>';
+    if(tbody) tbody.innerHTML=rvExcelRows.slice(0,5).map(function(row){
+      return '<tr>'+row.map(function(cell){
+        return '<td style="padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(cell).slice(0,60)+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+
+    var picker=document.getElementById('rv-col-picker');
+    var datePicker=document.getElementById('rv-date-col-picker');
+    if(picker){
+      picker.innerHTML=rvExcelHeaders.map(function(h,i){return '<option value="'+i+'">'+h+'</option>';}).join('');
+      var kws=['리뷰','내용','텍스트','본문','review','text','content','후기','평가','comment'];
+      var autoIdx=0;
+      for(var i=0;i<rvExcelHeaders.length;i++){
+        var hl=rvExcelHeaders[i].toLowerCase();
+        if(kws.some(function(k){return hl.indexOf(k)>=0;})){autoIdx=i;break;}
+      }
+      picker.value=String(autoIdx);
+    }
+    if(datePicker){
+      datePicker.innerHTML='<option value="">없음 — 위 월 기준</option>'+rvExcelHeaders.map(function(h,i){return '<option value="'+i+'">'+h+'</option>';}).join('');
+      var dateKws=['날짜','일자','date','작성일','time'];
+      for(var i=0;i<rvExcelHeaders.length;i++){
+        var hl=rvExcelHeaders[i].toLowerCase();
+        if(dateKws.some(function(k){return hl.indexOf(k)>=0;})){datePicker.value=String(i);break;}
+      }
+    }
+    var wrap=document.getElementById('rv-excel-preview-wrap');
+    if(wrap) wrap.style.display='block';
+    showAlert('alert-review','파일 로드 완료! 컬럼 선택 후 불러오기를 눌러주세요.','info');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadRvExcelToText(){
+  if(!rvExcelRows.length){showAlert('alert-review','먼저 파일을 업로드해주세요.','warn');return;}
+  var colIdx=parseInt(document.getElementById('rv-col-picker').value,10);
+  var dateColEl=document.getElementById('rv-date-col-picker');
+  var dateColIdx=dateColEl&&dateColEl.value!==''?parseInt(dateColEl.value,10):-1;
+
+  if(dateColIdx>=0){
+    var monthCount={};
+    rvExcelRows.forEach(function(row){
+      var d=String(row[dateColIdx]||'').slice(0,7);
+      if(d.length===7&&d[4]==='-') monthCount[d]=(monthCount[d]||0)+1;
+    });
+    var topMonth=Object.keys(monthCount).sort(function(a,b){return monthCount[b]-monthCount[a];})[0];
+    if(topMonth){var mEl=document.getElementById('rv-month');if(mEl)mEl.value=topMonth;}
+  }
+
+  var texts=rvExcelRows.map(function(row){
+    return String(row[colIdx]||'').trim();
+  }).filter(function(t){return t.length>3;});
+
+  switchRvInput('text');
+  var tEl=document.getElementById('rv-text');
+  if(tEl) tEl.value=texts.join('\n');
+  var infoEl=document.getElementById('rv-excel-loaded-info');
+  if(infoEl){infoEl.textContent='✓ '+texts.length+'개 리뷰 불러옴';infoEl.style.display='block';}
+  var countEl=document.getElementById('rv-text-count');
+  if(countEl){countEl.textContent='총 '+texts.length+'개 리뷰 준비됨. AI 분석 버튼을 눌러주세요.';countEl.style.display='block';}
+  showAlert('alert-review',texts.length+'개 리뷰를 불러왔어요. AI 분석 버튼을 눌러주세요.','success');
+}
+
+function analyzeReview(){
+  var comp=tabComp['review']||competitors[0]||'';
+  if(!comp){showAlert('alert-review','경쟁사를 먼저 선택해주세요.','warn');return;}
+  var mEl=document.getElementById('rv-month');
+  var sEl=document.getElementById('rv-source');
+  var tEl=document.getElementById('rv-text');
+  var month=mEl?mEl.value:'';
+  var source=sEl?sEl.value:'';
+  var text=tEl?tEl.value.trim():'';
+  if(!text){showAlert('alert-review','리뷰 텍스트를 입력해주세요.','warn');return;}
+  if(!month){showAlert('alert-review','월을 선택해주세요.','warn');return;}
+  var ldEl=document.getElementById('ai-loading-review');
+  if(ldEl)ldEl.style.display='flex';
+    var prompt='다음은 '+month+' ['+comp+'] 상품 네이버 리뷰입니다. 아래 JSON 형식으로만 응답하세요. 다른 텍스트 없이 JSON만.'
+    +' {"positive":["자주 언급된 긍정 키워드 최대 8개"],"negative":["자주 언급된 부정 키워드 최대 8개"],"neutral":["중립 언급 키워드 최대 4개"],"pos_summary":"긍정 내용 핵심 한 줄 요약 (예: 편안한 수면감과 앱 연동 편의성에 만족)","neg_summary":"부정 내용 핵심 한 줄 요약 (예: 쿠션 단단함과 소음 문제 일부 언급)","summary":"전체 리뷰 2~3문장 요약"}'
+    +' 리뷰:'+text.slice(0,4000);
+  apiFetch({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var t='';if(data.content)for(var i=0;i<data.content.length;i++)if(data.content[i].type==='text'){t=data.content[i].text;break;}
+    var p=JSON.parse(t.replace(/```json|```/g,'').trim());
+    var reviews=getRv(comp);
+    var idx=-1;for(var j=0;j<reviews.length;j++)if(reviews[j].month===month){idx=j;break;}
+    var entry={month:month,source:source,positive:p.positive||[],negative:p.negative||[],neutral:p.neutral||[],pos_summary:p.pos_summary||'',neg_summary:p.neg_summary||'',summary:p.summary||''};
+    if(idx>=0)reviews[idx]=entry;else reviews.push(entry);
+    reviews.sort(function(a,b){return a.month.localeCompare(b.month);});
+    saveRv(comp,reviews);
+    if(tEl)tEl.value='';
+    selectedRvMonth=month;
+    renderReviewResult(comp);
+    if(rvView==='trend') renderRvTrend(comp);
+    showAlert('alert-review','✓ ['+comp+'] '+month+' 리뷰 분석 완료!','success');
+  })
+  .catch(function(err){showAlert('alert-review','분석 오류: '+err.message,'error');})
+  .finally(function(){if(ldEl)ldEl.style.display='none';});
+}
+
+
+// ══════════════════════════════════════════════════
+// 리뷰 키워드 변동 추이 뷰
+// ══════════════════════════════════════════════════
+var rvView = 'month';
+
+function setRvView(v){
+  rvView = v;
+  var btnM = document.getElementById('rv-view-month');
+  var btnT = document.getElementById('rv-view-trend');
+  var panelM = document.getElementById('rv-view-panel-month');
+  var panelT = document.getElementById('rv-view-panel-trend');
+  if(btnM){ btnM.className='btn btn-sm'; btnM.className+=' '+(v==='month'?'btn-primary':'btn-ghost'); btnM.style.borderRadius='6px'; }
+  if(btnT){ btnT.className='btn btn-sm'; btnT.className+=' '+(v==='trend'?'btn-primary':'btn-ghost'); btnT.style.borderRadius='6px'; }
+  if(panelM) panelM.style.display = v==='month' ? 'block' : 'none';
+  if(panelT) panelT.style.display = v==='trend' ? 'block' : 'none';
+  if(v==='trend'){
+    var comp = tabComp['review'] || competitors[0] || '';
+    renderRvTrend(comp);
+  }
+}
+
+function renderRvTrend(comp){
+  var reviews = getRv(comp);
+  var area = document.getElementById('rv-trend-area');
+  if(!area) return;
+  if(!reviews || reviews.length < 2){
+    area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">월별 데이터가 2개 이상 있어야 변동 추이를 볼 수 있어요</div>';
+    return;
+  }
+
+  var months = reviews.map(function(r){ return r.month; });
+
+  // ── 1. 평점 추이 미니 차트 ──
+  var ratingRow = '<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px;flex-wrap:wrap">';
+  var maxRating = 5.0, minRating = 4.0;
+  reviews.forEach(function(r){
+    var rating = r.avg_rating || 0;
+    if(!rating) return;
+    var prev = reviews[reviews.indexOf(r)-1];
+    var diff = prev && prev.avg_rating ? rating - prev.avg_rating : null;
+    var barH = Math.round(((rating - minRating) / (maxRating - minRating)) * 60) + 20;
+    var barCol = rating >= 4.9 ? 'var(--green)' : rating >= 4.7 ? 'var(--blue)' : 'var(--amber)';
+    var diffStr = diff !== null ? '<span style="font-size:9px;color:'+(diff>0?'var(--green)':diff<0?'var(--red)':'var(--text3)')+';">'+(diff>0?'▲':'▼')+Math.abs(diff).toFixed(2)+'</span>' : '';
+    ratingRow += '<div style="text-align:center;flex:1;min-width:44px">'
+      + '<div style="font-size:11px;font-weight:700;color:'+barCol+'">'+rating+'</div>'
+      + diffStr
+      + '<div style="height:'+barH+'px;background:'+barCol+';border-radius:4px 4px 0 0;margin:3px auto 3px;width:28px;opacity:0.85"></div>'
+      + '<div style="font-size:9px;color:var(--text3)">'+r.month.slice(5)+'월</div>'
+      + '</div>';
+  });
+  ratingRow += '</div>';
+
+  // ── 2. 긍/부정 한줄 요약 타임라인 ──
+  var timelineHtml = reviews.map(function(r, i){
+    var isLast = (i === reviews.length - 1);
+    var prev = i > 0 ? reviews[i-1] : null;
+
+    // 신규 등장 키워드 계산
+    var newPos = prev ? r.positive.filter(function(k){ return prev.positive.indexOf(k) < 0; }) : [];
+    var newNeg = prev ? r.negative.filter(function(k){ return prev.negative.indexOf(k) < 0; }) : [];
+    var goneNeg = prev ? prev.negative.filter(function(k){ return r.negative.indexOf(k) < 0; }) : [];
+
+    var changeChips = '';
+    newPos.slice(0,3).forEach(function(k){
+      changeChips += '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:#ebfbee;color:#2f855a;border:1px solid #9ae6b4;margin:1px;display:inline-block">🆕+'+k+'</span>';
+    });
+    newNeg.slice(0,3).forEach(function(k){
+      changeChips += '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--red-l);color:var(--red);border:1px solid #feb2b2;margin:1px;display:inline-block">⚠️'+k+'</span>';
+    });
+    goneNeg.slice(0,2).forEach(function(k){
+      changeChips += '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--green-l);color:var(--green);border:1px solid #9ae6b4;margin:1px;display:inline-block">✓'+k+' 해소</span>';
+    });
+
+    var ratingVal = r.avg_rating || '—';
+    var ratingCol = ratingVal >= 4.9 ? 'var(--green)' : ratingVal >= 4.7 ? 'var(--blue)' : 'var(--amber)';
+
+    return '<div style="display:grid;grid-template-columns:72px 1fr;gap:0;position:relative">'
+      // 타임라인 선
+      + '<div style="display:flex;flex-direction:column;align-items:center;padding-top:4px">'
+      + '<div style="width:10px;height:10px;border-radius:50%;background:'+(isLast?'var(--blue)':'var(--border2)')+';border:2px solid '+(isLast?'var(--blue)':'var(--text3)')+';flex-shrink:0;z-index:1"></div>'
+      + (i < reviews.length-1 ? '<div style="width:2px;flex:1;background:var(--border);margin:3px 0"></div>' : '')
+      + '</div>'
+      // 내용
+      + '<div style="padding:0 0 20px 12px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<span style="font-size:12px;font-weight:700;color:var(--text)">'+r.month+'</span>'
+      + '<span style="font-size:11px;font-weight:700;color:'+ratingCol+'">★ '+ratingVal+'</span>'
+      + (r.count ? '<span style="font-size:10px;color:var(--text3)">'+r.count+'건</span>' : '')
+      + '</div>'
+      // 긍정 한줄
+      + (r.pos_summary ? '<div style="font-size:12px;color:#2f855a;background:#ebfbee;border-radius:6px;padding:6px 10px;margin-bottom:5px;line-height:1.5">✅ '+r.pos_summary+'</div>' : '')
+      // 부정 한줄
+      + (r.neg_summary ? '<div style="font-size:12px;color:var(--red);background:var(--red-l);border-radius:6px;padding:6px 10px;margin-bottom:5px;line-height:1.5">❌ '+r.neg_summary+'</div>' : '')
+      // 전월 대비 변화 칩
+      + (changeChips && prev ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;align-items:center"><span style="font-size:10px;color:var(--text3);margin-right:3px">전월 대비</span>'+changeChips+'</div>' : '')
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  // ── 3. 긍/부정 키워드 히트맵 (월×키워드) ──
+  // 전체 기간 상위 키워드 수집
+  var allPosCount = {}, allNegCount = {};
+  reviews.forEach(function(r){
+    r.positive.forEach(function(k){ allPosCount[k] = (allPosCount[k]||0)+1; });
+    r.negative.forEach(function(k){ allNegCount[k] = (allNegCount[k]||0)+1; });
+  });
+  var topPos = Object.keys(allPosCount).sort(function(a,b){return allNegCount[b]-allNegCount[a] || allPosCount[b]-allPosCount[a];}).slice(0,8);
+  var topNeg = Object.keys(allNegCount).sort(function(a,b){return allNegCount[b]-allNegCount[a];}).slice(0,8);
+
+  function heatmapRow(keywords, data, isPos){
+    var col = isPos ? '#2f855a' : 'var(--red)';
+    var bg = isPos ? '#ebfbee' : 'var(--red-l)';
+    var bdr = isPos ? '#9ae6b4' : '#feb2b2';
+    var rows = keywords.map(function(kw){
+      var cells = months.map(function(m){
+        var rev = reviews.filter(function(r){return r.month===m;})[0];
+        var arr = rev ? (isPos ? rev.positive : rev.negative) : [];
+        var has = arr.indexOf(kw) >= 0;
+        return '<td style="padding:5px 8px;border:1px solid var(--border);text-align:center;background:'+(has?bg:'var(--bg)')+'"><span style="font-size:13px">'+(has?'●':'·')+'</span></td>';
+      }).join('');
+      return '<tr><td style="padding:5px 10px;border:1px solid var(--border);font-size:12px;font-weight:500;color:'+col+';white-space:nowrap;background:var(--bg2)">'+kw+'</td>'+cells+'</tr>';
+    }).join('');
+    var headerCells = months.map(function(m){ return '<th style="padding:5px 8px;border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text3);text-align:center;white-space:nowrap;background:#f8fafc">'+m.slice(5)+'월</th>'; }).join('');
+    return '<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr><th style="padding:5px 10px;border:1px solid var(--border);text-align:left;background:#f8fafc;font-size:10px;font-weight:600;color:var(--text3)">키워드</th>'+headerCells+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  area.innerHTML =
+    // 평점 추이
+    '<div class="card" style="margin-bottom:14px">'
+    + '<div class="card-hd"><div class="card-title">📈 월별 평점 추이</div><span style="font-size:11px;color:var(--text3)">'+comp+'</span></div>'
+    + '<div class="card-bd-sm">'+ratingRow+'</div>'
+    + '</div>'
+
+    // 타임라인
+    + '<div class="card" style="margin-bottom:14px">'
+    + '<div class="card-hd"><div class="card-title">🗓 월별 핵심 요약 타임라인</div></div>'
+    + '<div class="card-bd" style="padding-bottom:4px">'+timelineHtml+'</div>'
+    + '</div>'
+
+    // 히트맵
+    + '<div class="card" style="margin-bottom:14px">'
+    + '<div class="card-hd"><div class="card-title">✅ 긍정 키워드 출현 현황</div><span style="font-size:11px;color:var(--text3)">● = 해당 월에 언급됨</span></div>'
+    + '<div class="card-bd-sm">'+heatmapRow(topPos, reviews, true)+'</div>'
+    + '</div>'
+
+    + '<div class="card">'
+    + '<div class="card-hd"><div class="card-title">❌ 부정 키워드 출현 현황</div><span style="font-size:11px;color:var(--text3)">● = 해당 월에 언급됨</span></div>'
+    + '<div class="card-bd-sm">'+heatmapRow(topNeg, reviews, false)+'</div>'
+    + '</div>';
+}
+
+function selectRvMonth(idx){
+  var comp=window._rvComp||tabComp['review']||competitors[0]||'';
+  updateRvCompLabel(comp);
+  var reviews=getRv(comp);
+  if(reviews[idx])selectedRvMonth=reviews[idx].month;
+  renderReviewResult(comp);
+}
+
+function renderReviewResult(comp){
+  if(!comp) return;
+  // 현재 경쟁사 라벨 업데이트
+  var hd=document.querySelector('#tab-review .card .card-hd .card-title');
+  if(hd) hd.textContent='['+comp+'] 리뷰 입력';
+  // 결과 헤더 라벨
+  var resultHeader=document.getElementById('rv-result-comp-label');
+  if(resultHeader) resultHeader.textContent=comp+' 리뷰 분석 결과';
+  window._rvComp=comp;
+  var reviews=getRv(comp);
+  var tabsEl=document.getElementById('rv-month-tabs');
+  var resultEl=document.getElementById('rv-result-area');
+  if(!tabsEl||!resultEl)return;
+  if(!reviews.length){
+    tabsEl.innerHTML='';
+    resultEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">리뷰를 분석하면 여기에 결과가 표시됩니다</div>';
+    return;
+  }
+  var found=reviews.some(function(r){return r.month===selectedRvMonth;});
+  if(!found)selectedRvMonth=reviews[reviews.length-1].month;
+    window._rvComp=comp;
+  tabsEl.innerHTML=reviews.map(function(r,ri){
+    var act=r.month===selectedRvMonth;
+    var bdr=act?'var(--purple)':'var(--border2)';
+    var bg=act?'var(--purple)':'var(--card)';
+    var col=act?'#fff':'var(--text2)';
+    return '<button style="padding:5px 14px;border-radius:20px;border:1.5px solid '+bdr+';background:'+bg+';color:'+col+';font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font)" onclick="selectRvMonth('+ri+')">'+r.month+'</button>';
+  }).join('');
+  var r=null;for(var i=0;i<reviews.length;i++)if(reviews[i].month===selectedRvMonth){r=reviews[i];break;}
+  if(!r){resultEl.innerHTML='';return;}
+  var prev=null;var rIdx=reviews.indexOf(r);if(rIdx>0)prev=reviews[rIdx-1];
+  var newPos=prev?r.positive.filter(function(k){return prev.positive.indexOf(k)<0;}):[];
+  var newNeg=prev?r.negative.filter(function(k){return prev.negative.indexOf(k)<0;}):[];
+  function kwH(arr,cls,nArr){
+    return arr.map(function(k){
+      var bg=cls==='pos'?'#ebfbee':cls==='neg'?'var(--red-l)':'var(--bg)';
+      var col=cls==='pos'?'#2f855a':cls==='neg'?'var(--red)':'var(--text2)';
+      var bdr=cls==='pos'?'#9ae6b4':cls==='neg'?'#feb2b2':'var(--border)';
+      return '<span style="font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;background:'+bg+';color:'+col+';border:1px solid '+bdr+';display:inline-block;margin:2px">'+(nArr&&nArr.indexOf(k)>=0?'🆕 ':'')+k+'</span>';
+    }).join('')||'<span style="color:var(--text3);font-size:13px">없음</span>';
+  }
+  // 긍/부정 한줄 요약
+  var posSumHtml = r.pos_summary ? '<div style="font-size:12px;font-weight:500;color:#2f855a;background:#ebfbee;border-radius:6px;padding:7px 12px;margin-bottom:10px;line-height:1.6">💬 '+r.pos_summary+'</div>' : '';
+  var negSumHtml = r.neg_summary ? '<div style="font-size:12px;font-weight:500;color:var(--red);background:var(--red-l);border-radius:6px;padding:7px 12px;margin-bottom:10px;line-height:1.6">💬 '+r.neg_summary+'</div>' : '';
+
+  var html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">✅ 긍정</div><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--green-l);color:var(--green);border:1px solid #9ae6b4">'+r.positive.length+'개</span></div><div class="card-bd-sm">'+posSumHtml+'<div style="display:flex;flex-wrap:wrap;gap:3px">'+kwH(r.positive,'pos',newPos)+'</div></div></div>'
+    +'<div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">❌ 부정</div><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--red-l);color:var(--red);border:1px solid #feb2b2">'+r.negative.length+'개</span></div><div class="card-bd-sm">'+negSumHtml+'<div style="display:flex;flex-wrap:wrap;gap:3px">'+kwH(r.negative,'neg',newNeg)+'</div></div></div>'
+    +'</div>';
+  if(r.neutral&&r.neutral.length)html+='<div class="card" style="margin-bottom:14px"><div class="card-hd"><div class="card-title">💬 중립</div></div><div class="card-bd-sm" style="display:flex;flex-wrap:wrap;gap:3px">'+kwH(r.neutral,'neu',[])+'</div></div>';
+  html+='<div class="card" style="margin-bottom:14px"><div class="card-hd"><div class="card-title">📋 AI 요약</div>'+(r.source?'<span style="font-size:11px;color:var(--text3)">'+r.source+'</span>':'')+'</div><div class="card-bd-sm" style="font-size:13px;color:var(--text2);line-height:1.8">'+(r.summary||'—')+'</div></div>';
+  if(prev){
+    html+='<div class="card"><div class="card-hd"><div class="card-title">📊 전월 대비</div><span style="font-size:11px;color:var(--text3)">'+prev.month+' → '+r.month+'</span></div><div class="card-bd-sm">';
+    if(newPos.length)html+='<div style="margin-bottom:8px"><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--green-l);color:var(--green);border:1px solid #9ae6b4;margin-right:8px">신규 긍정</span>'+kwH(newPos,'pos',[])+'</div>';
+    if(newNeg.length)html+='<div><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--red-l);color:var(--red);border:1px solid #feb2b2;margin-right:8px">신규 부정</span>'+kwH(newNeg,'neg',[])+'</div>';
+    if(!newPos.length&&!newNeg.length)html+='<span style="font-size:13px;color:var(--green);font-weight:500">키워드 변화 없음</span>';
+    html+='</div></div>';
+  }
+  resultEl.innerHTML=html;
+}
+
+
+// ══════════════════════════════════════════════════
+// 4자 비교 데이터 (embedded)
+// ══════════════════════════════════════════════════
+var CMP = {
+  // 소닉슬립: 리뷰수×10 추정 판매량
+  sonic: {"2024-10":{"reviews":9,"est":90,"rating":4.67},"2024-11":{"reviews":54,"est":540,"rating":4.85},"2024-12":{"reviews":51,"est":510,"rating":4.73},"2025-01":{"reviews":38,"est":380,"rating":4.92},"2025-02":{"reviews":32,"est":320,"rating":4.94},"2025-03":{"reviews":41,"est":410,"rating":4.85},"2025-04":{"reviews":61,"est":610,"rating":4.75},"2025-05":{"reviews":41,"est":410,"rating":4.85},"2025-06":{"reviews":50,"est":500,"rating":4.86},"2025-07":{"reviews":63,"est":630,"rating":4.81},"2025-08":{"reviews":53,"est":530,"rating":4.83},"2025-09":{"reviews":60,"est":600,"rating":4.73},"2025-10":{"reviews":49,"est":490,"rating":4.80},"2025-11":{"reviews":57,"est":570,"rating":4.65},"2025-12":{"reviews":76,"est":760,"rating":4.74},"2026-01":{"reviews":64,"est":640,"rating":4.72},"2026-02":{"reviews":49,"est":490,"rating":4.76},"2026-03":{"reviews":52,"est":520,"rating":4.88},"2026-04":{"reviews":43,"est":430,"rating":4.95},"2026-05":{"reviews":54,"est":540,"rating":4.81},"2026-06":{"reviews":3,"est":30,"rating":4.67}},
+  // 오키미키
+  okimiki: {"2022-09":{"reviews":2,"est":20,"rating":5.0},"2022-10":{"reviews":1,"est":10,"rating":5.0},"2022-11":{"reviews":2,"est":20,"rating":4.5},"2022-12":{"reviews":1,"est":10,"rating":5.0},"2023-01":{"reviews":3,"est":30,"rating":4.33},"2023-02":{"reviews":2,"est":20,"rating":4.5},"2023-03":{"reviews":2,"est":20,"rating":5.0},"2023-04":{"reviews":2,"est":20,"rating":5.0},"2023-05":{"reviews":3,"est":30,"rating":4.67},"2023-06":{"reviews":4,"est":40,"rating":4.75},"2023-07":{"reviews":5,"est":50,"rating":4.8},"2023-08":{"reviews":4,"est":40,"rating":4.75},"2023-09":{"reviews":6,"est":60,"rating":4.83},"2023-10":{"reviews":7,"est":70,"rating":4.71},"2023-11":{"reviews":8,"est":80,"rating":4.88},"2023-12":{"reviews":9,"est":90,"rating":4.89},"2024-01":{"reviews":10,"est":100,"rating":4.8},"2024-02":{"reviews":9,"est":90,"rating":4.89},"2024-03":{"reviews":11,"est":110,"rating":4.91},"2024-04":{"reviews":12,"est":120,"rating":4.83},"2024-05":{"reviews":15,"est":150,"rating":4.87},"2024-06":{"reviews":18,"est":180,"rating":4.78},"2024-07":{"reviews":20,"est":200,"rating":4.85},"2024-08":{"reviews":22,"est":220,"rating":4.91},"2024-09":{"reviews":21,"est":210,"rating":4.86},"2024-10":{"reviews":18,"est":180,"rating":4.78},"2024-11":{"reviews":25,"est":250,"rating":4.76},"2024-12":{"reviews":28,"est":280,"rating":4.75},"2025-01":{"reviews":24,"est":240,"rating":4.83},"2025-02":{"reviews":19,"est":190,"rating":4.79},"2025-03":{"reviews":22,"est":220,"rating":4.86},"2025-04":{"reviews":26,"est":260,"rating":4.81},"2025-05":{"reviews":29,"est":290,"rating":4.72},"2025-06":{"reviews":27,"est":270,"rating":4.52},"2025-07":{"reviews":23,"est":230,"rating":4.74},"2025-08":{"reviews":24,"est":240,"rating":5.0},"2025-09":{"reviews":22,"est":220,"rating":4.86},"2025-10":{"reviews":19,"est":190,"rating":4.74},"2025-11":{"reviews":21,"est":210,"rating":4.71},"2025-12":{"reviews":25,"est":250,"rating":4.72},"2026-01":{"reviews":21,"est":210,"rating":4.81},"2026-02":{"reviews":15,"est":150,"rating":4.67},"2026-03":{"reviews":14,"est":140,"rating":5.0},"2026-04":{"reviews":17,"est":170,"rating":4.76},"2026-05":{"reviews":13,"est":130,"rating":4.46}},
+  // 슬로우베드: 실 수주량
+  slowbed: {"2025-02":13,"2025-03":1,"2025-04":4,"2025-05":67,"2025-06":73,"2025-07":45,"2025-08":81,"2025-09":82,"2025-10":80,"2025-11":72,"2025-12":79,"2026-01":92,"2026-02":118,"2026-03":98,"2026-04":69,"2026-05":78},
+  // 일룸: 분기 균등 배분
+  iloom: {"2025-01":1655,"2025-02":1655,"2025-03":1656,"2025-04":1507,"2025-05":1507,"2025-06":1506,"2025-07":1491,"2025-08":1491,"2025-09":1491,"2025-10":1324,"2025-11":1324,"2025-12":1324,"2026-01":1644,"2026-02":1644,"2026-03":1645,"2026-04":1919,"2026-05":1919}
+};
+
+var cmpView='sales';
+var cmpPeriod=6;
+var cmpChart=null;
+var CMP_COLORS={iloom:'#4f7ef8',sonic:'#38a169',okimiki:'#e53e3e',slowbed:'#d69e2e'};
+var CMP_LABELS={iloom:'일룸',sonic:'소닉슬립',okimiki:'오키미키',slowbed:'슬로우베드'};
+
+function getAllMonths(){
+  var set={};
+  ['sonic','okimiki','slowbed','iloom'].forEach(function(k){
+    Object.keys(CMP[k]).forEach(function(m){set[m]=1;});
+  });
+  return Object.keys(set).sort();
+}
+
+function filterMonths(months){
+  if(cmpPeriod===99)return months;
+  return months.slice(-cmpPeriod);
+}
+
+function setCmpView(v){
+  cmpView=v;
+  ['sales','rating','share'].forEach(function(k){
+    var b=document.getElementById('cmp-btn-'+k);
+    if(b)b.className='btn btn-sm '+(k===v?'btn-primary':'btn-ghost');
+  });
+  drawCmp();
+}
+
+function setCmpPeriod(p,btn){
+  cmpPeriod=p;
+  document.querySelectorAll('[id^="cmp-period-"]').forEach(function(el){el.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  drawCmp();
+}
+
+function renderCompareTab(){
+  renderCmpKPIs();
+  drawCmp();
+  renderCmpShareTable();
+  renderReviewSummaries();
+  renderIloomProdContent();
+}
+
+function renderCmpKPIs(){
+  var el=document.getElementById('cmp-kpis');
+  if(!el)return;
+  var recent=['2026-03','2026-04','2026-05'];
+  function avg3(key,field){
+    var vals=recent.map(function(m){
+      if(key==='sonic'||key==='okimiki'){var d=CMP[key][m];return d?d[field]:0;}
+      return CMP[key][m]||0;
+    });
+    return Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
+  }
+  function ratingAvg(key){
+    var vals=recent.map(function(m){var d=CMP[key][m];return d?d.rating:0;}).filter(function(v){return v>0;});
+    if(!vals.length)return 0;
+    return (vals.reduce(function(a,b){return a+b;},0)/vals.length).toFixed(2);
+  }
+  // 일룸 온라인 1위: 드로우 모션베드 SS PKG(매트리스 포함) — 총 6262건 / 18개월
+  var iloomOnlineMonthlyAvg = 348; // 6262 / 18
+  // 일룸 오프라인 1위: 바젤 모션베드 프레임 SS — 총 7487건 / 18개월
+  var iloomOfflineMonthlyAvg = 416; // 7487 / 18
+
+  el.innerHTML=
+    // 일룸 온라인
+    kpiCard2('일룸 (온라인)','月 평균 '+iloomOnlineMonthlyAvg+'건','드로우 SS PKG · 실수주','#4f7ef8')+
+    // 일룸 오프라인
+    kpiCard2('일룸 (오프라인)','月 평균 '+iloomOfflineMonthlyAvg+'건','바젤 프레임 SS · 실수주','#3b82c4')+
+    // 슬로우베드
+    kpiCard2('슬로우베드','月 평균 '+avg3('slowbed','qty')+'건','실 수주','#d69e2e')+
+    // 소닉슬립
+    kpiCard2('소닉슬립','月 추정 '+avg3('sonic','est')+'건','리뷰×10 / 평점 '+ratingAvg('sonic'),'#38a169')+
+    // 오키미키
+    kpiCard2('오키미키','月 추정 '+avg3('okimiki','est')+'건','리뷰×10 / 평점 '+ratingAvg('okimiki'),'#e53e3e');
+}
+
+function kpiCard2(name,value,sub,color){
+  return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;box-shadow:var(--sh);border-top:2px solid '+color+'"><div style="font-size:9px;font-weight:700;color:'+color+';text-transform:uppercase;margin-bottom:3px;letter-spacing:.04em">'+name+'</div><div style="font-size:16px;font-weight:700;color:var(--text);line-height:1.2">'+value+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+sub+'</div></div>';
+}
+
+function drawCmp(){
+  var allM=getAllMonths();
+  var months=filterMonths(allM);
+  var lbl=document.getElementById('cmp-chart-lbl');
+  var ctx=document.getElementById('cmp-chart');
+  if(!ctx)return;
+  if(cmpChart)cmpChart.destroy();
+
+  var datasets=[];
+  if(cmpView==='sales'){
+    if(lbl)lbl.textContent='월별 판매량 추이 (일룸·슬로우베드: 실수주 / 소닉·오키: 리뷰×10 추정)';
+    var keys=['iloom','sonic','okimiki','slowbed'];
+    keys.forEach(function(k){
+      var data=months.map(function(m){
+        if(k==='sonic'||k==='okimiki'){var d=CMP[k][m];return d?d.est:null;}
+        return CMP[k][m]||null;
+      });
+      datasets.push({label:CMP_LABELS[k],data:data,borderColor:CMP_COLORS[k],backgroundColor:CMP_COLORS[k]+'22',borderWidth:2,pointRadius:3,fill:false,tension:0.3,spanGaps:true});
+    });
+    cmpChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels:months,datasets:datasets},options:lineOpts(function(v){return v?v.toLocaleString()+'건':'';},'판매량(건)')});
+  } else if(cmpView==='rating'){
+    if(lbl)lbl.textContent='월별 평점 추이 (소닉슬립·오키미키)';
+    ['sonic','okimiki'].forEach(function(k){
+      var data=months.map(function(m){var d=CMP[k][m];return d?d.rating:null;});
+      datasets.push({label:CMP_LABELS[k],data:data,borderColor:CMP_COLORS[k],backgroundColor:CMP_COLORS[k]+'22',borderWidth:2,pointRadius:3,fill:false,tension:0.3,spanGaps:true});
+    });
+    cmpChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels:months,datasets:datasets},options:lineOpts(function(v){return v?v.toFixed(2)+'점':'';}, '평점',{min:4,max:5})});
+  } else {
+    if(lbl)lbl.textContent='월별 추정 시장점유율 (4사 합산 기준)';
+    var shareData={iloom:[],sonic:[],okimiki:[],slowbed:[]};
+    months.forEach(function(m){
+      var il=CMP.iloom[m]||0;
+      var ss=CMP.sonic[m]?CMP.sonic[m].est:0;
+      var ok=CMP.okimiki[m]?CMP.okimiki[m].est:0;
+      var sl=CMP.slowbed[m]||0;
+      var tot=il+ss+ok+sl;
+      shareData.iloom.push(tot?Math.round(il/tot*100):null);
+      shareData.sonic.push(tot?Math.round(ss/tot*100):null);
+      shareData.okimiki.push(tot?Math.round(ok/tot*100):null);
+      shareData.slowbed.push(tot?Math.round(sl/tot*100):null);
+    });
+    ['iloom','sonic','okimiki','slowbed'].forEach(function(k){
+      datasets.push({label:CMP_LABELS[k],data:shareData[k],borderColor:CMP_COLORS[k],backgroundColor:CMP_COLORS[k],borderWidth:0,fill:true,tension:0,spanGaps:true,pointRadius:0});
+    });
+    cmpChart=new Chart(ctx.getContext('2d'),{type:'line',data:{labels:months,datasets:datasets},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{ticks:{color:'#a0aec0',font:{size:11}},grid:{color:'#e6eaf4'}},y:{stacked:true,min:0,max:100,ticks:{color:'#a0aec0',font:{size:11},callback:function(v){return v+'%';}},grid:{color:'#e6eaf4'}}}}});
+  }
+}
+
+function lineOpts(cbFn,yLabel,yExtra){
+  var yConfig={ticks:{color:'#a0aec0',font:{size:11},callback:cbFn},grid:{color:'#e6eaf4'}};
+  if(yExtra)Object.keys(yExtra).forEach(function(k){yConfig[k]=yExtra[k];});
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+cbFn(ctx.raw);}}}},scales:{x:{ticks:{color:'#a0aec0',font:{size:11}},grid:{color:'#e6eaf4'}},y:yConfig}};
+}
+
+// ── 시장점유율 매출량/매출액 토글 ──
+var shareMetric = 'qty'; // 'qty' or 'amt'
+
+// 일룸 분기별 매출액 (분기 균등 배분, 억 단위)
+var ILOOM_AMT_MONTHLY = {
+  "2025-01":313012762,"2025-02":313012762,"2025-03":313011762,
+  "2025-04":276053834,"2025-05":276053834,"2025-06":276053835,
+  "2025-07":274660470,"2025-08":274660470,"2025-09":274660470,
+  "2025-10":239361140,"2025-11":239361140,"2025-12":239361140,
+  "2026-01":301422683,"2026-02":301422683,"2026-03":301422684,
+  "2026-04":344877184,"2026-05":344877184
+};
+// 소닉/오키 추정 단가 (판매량×추정단가 = 추정 매출액)
+var SONIC_AVG_PRICE = 1850000; // 옵션 평균가 기준 추정
+var OK_AVG_PRICE = 950000;
+var SLOWBED_AVG_PRICE = 1200000;
+
+function setShareMetric(v){
+  shareMetric = v;
+  ['qty','amt'].forEach(function(k){
+    var b=document.getElementById('share-tab-'+k);
+    if(b)b.className='btn btn-sm '+(k===v?'btn-primary':'btn-ghost')+' '+(k===v?'':'');
+  });
+  renderCmpShareTable();
+}
+
+function renderCmpShareTable(){
+  var el=document.getElementById('cmp-share-body');
+  if(!el)return;
+  var months=filterMonths(getAllMonths());
+  var rows='';
+  var isAmt = shareMetric==='amt';
+
+  months.slice(-12).reverse().forEach(function(m){
+    var ilQty=CMP.iloom[m]||0;
+    var ssQty=CMP.sonic[m]?CMP.sonic[m].est:0;
+    var okQty=CMP.okimiki[m]?CMP.okimiki[m].est:0;
+    var slQty=CMP.slowbed[m]||0;
+
+    var il = isAmt ? (ILOOM_AMT_MONTHLY[m]||ilQty*1500000) : ilQty;
+    var ss = isAmt ? ssQty*SONIC_AVG_PRICE : ssQty;
+    var ok = isAmt ? okQty*OK_AVG_PRICE : okQty;
+    var sl = isAmt ? slQty*SLOWBED_AVG_PRICE : slQty;
+
+    var tot=il+ss+ok+sl;
+    if(!tot)return;
+    var pct=function(v){return tot?Math.round(v/tot*100)+'%':'—';};
+    function fmtVal(v){
+      if(isAmt)return (v/1e8).toFixed(1)+'억';
+      return v.toLocaleString()+'건';
+    }
+    var prevM=months[months.indexOf(m)-1];
+    var prevSsQty=prevM&&CMP.sonic[prevM]?CMP.sonic[prevM].est:null;
+    var prevSs=isAmt?(prevSsQty?prevSsQty*SONIC_AVG_PRICE:null):prevSsQty;
+    var ssTrend=prevSs?('<span style="color:'+(ss>prevSs?'var(--red)':ss<prevSs?'var(--green)':'var(--text3)')+';">'+(ss>prevSs?'▲':ss<prevSs?'▼':'—')+(ss!==prevSs?(isAmt?((Math.abs(ss-prevSs)/1e8).toFixed(1)+'억'):Math.abs(ss-prevSs).toLocaleString()):'')+'</span>'):'—';
+    // 순서: 일룸 > 슬로우베드 > 소닉슬립 > 오키미키
+    rows+='<tr>'
+      +'<td class="v">'+m+'</td>'
+      +'<td>'+pct(il)+'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+fmtVal(il)+'</span></td>'
+      +'<td>'+pct(sl)+'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+fmtVal(sl)+'</span></td>'
+      +'<td>'+pct(ss)+'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+fmtVal(ss)+'</span></td>'
+      +'<td>'+pct(ok)+'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+fmtVal(ok)+'</span></td>'
+      +'<td>'+ssTrend+'</td>'
+      +'</tr>';
+  });
+  el.innerHTML=rows||'<tr><td colspan="6" class="empty-row">데이터 없음</td></tr>';
+}
+
+// ── 일룸 주력 품목 경쟁사 비교 ──
+var iloomProdTab = 'online';
+
+var ILOOM_PRODUCTS = {
+  online: {
+    name: '드로우 모션베드 SS PKG(매트리스 포함)',
+    channel: '온라인',
+    series: '드로우',
+    totalQty: 6262,
+    totalAmt: 1075995686,
+    channelShare: '온라인 판매량 1위',
+    // 분기별 데이터
+    quarterly: [
+      {q:'2025 Q1', qty:4, amt:14255},
+      {q:'2025 Q2', qty:0, amt:0},
+      {q:'2025 Q3', qty:9, amt:821912},
+      {q:'2025 Q4', qty:8, amt:3437973},
+      {q:'2026 Q1', qty:6202, amt:1065741600},
+      {q:'2026 Q2', qty:39, amt:6412146}
+    ],
+    avgPrice: Math.round(1075995686/6262),
+    competitors: {
+      sonic: {name:'소닉슬립 헤드틸팅/퀸', price:1940000, channel:'온라인'},
+      okimiki: {name:'오키미키 스탠다드/퀸', price:890000, channel:'온라인'},
+      slowbed: {name:'슬로우베드 베이직/퀸', price:1290000, channel:'온라인'},
+    }
+  },
+  offline: {
+    name: '바젤 모션베드 프레임 SS',
+    channel: '오프라인(공용)',
+    series: '바젤',
+    totalQty: 7487,
+    totalAmt: 1220487108,
+    channelShare: '오프라인 판매량 1위',
+    quarterly: [
+      {q:'2025 Q1', qty:68, amt:11781818},
+      {q:'2025 Q2', qty:82, amt:13436363},
+      {q:'2025 Q3', qty:88, amt:14454545},
+      {q:'2025 Q4', qty:488, amt:79181817},
+      {q:'2026 Q1', qty:4466, amt:792903630},
+      {q:'2026 Q2', qty:2295, amt:308728935}
+    ],
+    avgPrice: Math.round(1220487108/7487),
+    competitors: {
+      sonic: {name:'소닉슬립 베이직/슈퍼싱글', price:1490000, channel:'오프라인/전시장'},
+      okimiki: {name:'오키미키 프레임 SS', price:750000, channel:'오프라인'},
+      slowbed: {name:'슬로우베드 프레임 SS', price:1090000, channel:'오프라인'},
+    }
+  }
+};
+
+function setIloomProdTab(tab){
+  iloomProdTab = tab;
+  ['online','offline'].forEach(function(k){
+    var b=document.getElementById('iloom-prod-btn-'+k);
+    if(b)b.className='btn btn-sm '+(k===tab?'btn-primary':'btn-ghost');
+  });
+  renderIloomProdContent();
+}
+
+function renderIloomProdContent(){
+  var el=document.getElementById('iloom-prod-content');
+  if(!el)return;
+  var d=ILOOM_PRODUCTS[iloomProdTab];
+  if(!d){el.innerHTML='';return;}
+
+  var qRows=d.quarterly.filter(function(r){return r.qty>0;}).map(function(r){
+    return '<tr><td style="padding:4px 8px;border:1px solid var(--border);font-size:10px;color:var(--text2)">'+r.q+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text);text-align:right">'+r.qty.toLocaleString()+'건</td>'
+      +'<td style="padding:4px 8px;border:1px solid var(--border);font-size:10px;color:var(--text2);text-align:right">'+(r.amt>0?(r.amt/1e6).toFixed(0)+'만':'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var compRows=Object.entries(d.competitors).map(function(entry){
+    var k=entry[0], c=entry[1];
+    var color=CMP_COLORS[k]||'#666';
+    var label=CMP_LABELS[k]||k;
+    var diff=c.price-d.avgPrice;
+    var diffColor=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<div style="width:5px;height:5px;border-radius:50%;background:'+color+';flex-shrink:0"></div>'
+      +'<div><div style="font-size:11px;font-weight:600;color:'+color+'">'+label+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+c.name+'</div></div></div>'
+      +'<div style="text-align:right">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text)">'+c.price.toLocaleString()+'원</div>'
+      +'<div style="font-size:10px;color:'+diffColor+'">'+(diff>0?'▲ ':diff<0?'▼ ':'')+Math.abs(diff).toLocaleString()+'원</div>'
+      +'</div></div>';
+  }).join('');
+
+  el.innerHTML=
+    '<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+d.channelShare+' · '+d.channel+'</div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4">'+d.name+'</div>'
+    +'<div style="display:flex;gap:12px;margin-top:5px">'
+    +'<div><div style="font-size:10px;color:var(--text3)">총 판매수량</div><div style="font-size:14px;font-weight:700;color:var(--text)">'+d.totalQty.toLocaleString()+'건</div></div>'
+    +'<div><div style="font-size:10px;color:var(--text3)">총 수주금액</div><div style="font-size:14px;font-weight:700;color:var(--text)">'+(d.totalAmt/1e8).toFixed(1)+'억</div></div>'
+    +'<div><div style="font-size:10px;color:var(--text3)">일룸 평균단가</div><div style="font-size:14px;font-weight:700;color:var(--blue)">'+d.avgPrice.toLocaleString()+'원</div></div>'
+    +'</div></div>'
+    // 분기별 미니 테이블
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:3px;text-transform:uppercase">분기별 수주</div>'
+    +'<table style="border-collapse:collapse;width:100%;margin-bottom:8px"><thead><tr>'
+    +'<th style="padding:3px 8px;border:1px solid var(--border);background:#f8fafc;font-size:9px;font-weight:600;color:var(--text3);text-align:left">분기</th>'
+    +'<th style="padding:3px 8px;border:1px solid var(--border);background:#f8fafc;font-size:9px;font-weight:600;color:var(--text3);text-align:right">수량</th>'
+    +'<th style="padding:3px 8px;border:1px solid var(--border);background:#f8fafc;font-size:9px;font-weight:600;color:var(--text3);text-align:right">금액</th>'
+    +'</tr></thead><tbody>'+qRows+'</tbody></table>'
+    // 경쟁사 가격 비교
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase">경쟁사 동급 제품 가격 비교</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-bottom:6px">▶ 일룸 평균단가 기준 ('+d.avgPrice.toLocaleString()+'원)</div>'
+    +compRows;
+}
+
+// ── 실제 리뷰 파일 분석 데이터 ──
+var SS_REVIEWS = {"2024-10": {"count": 9, "avg_rating": 4.67, "positive": ["좋음", "만족", "편안함", "빠른 배송", "추천"], "negative": ["딱딱한 쿠션", "불편함"], "neutral": ["배송"], "summary": "2024-10 소닉슬립 9건 · 평점 4.67. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2024-11": {"count": 54, "avg_rating": 4.85, "positive": ["좋음", "편안함", "만족", "편리함", "친절한 서비스", "설치 편의", "추천", "빠른 배송"], "negative": ["불편함", "딱딱한 쿠션", "통증 유발", "아쉬운 점", "제품 문제", "고장/불량"], "neutral": ["배송", "사이즈", "가격"], "summary": "2024-11 소닉슬립 54건 · 평점 4.85. 좋음, 편안함, 만족 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2024-12": {"count": 51, "avg_rating": 4.73, "positive": ["좋음", "만족", "편안함", "친절한 서비스", "가성비", "설치 편의", "리모컨 편의성", "빠른 배송"], "negative": ["딱딱한 쿠션", "불편함", "통증 유발", "무거움", "아쉬운 점", "고장/불량"], "neutral": ["사이즈", "배송", "가격"], "summary": "2024-12 소닉슬립 51건 · 평점 4.73. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-01": {"count": 38, "avg_rating": 4.92, "positive": ["좋음", "편안함", "만족", "친절한 서비스", "추천", "안정감", "최고", "가성비"], "negative": ["딱딱한 쿠션", "불편함", "소음 발생", "고장/불량"], "neutral": ["배송", "사이즈"], "summary": "2025-01 소닉슬립 38건 · 평점 4.92. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-02": {"count": 32, "avg_rating": 4.94, "positive": ["만족", "편안함", "좋음", "설치 편의", "추천", "친절한 서비스"], "negative": ["딱딱한 쿠션", "소음 발생", "통증 유발", "불편함", "고장/불량"], "neutral": ["사이즈", "배송"], "summary": "2025-02 소닉슬립 32건 · 평점 4.94. 만족, 편안함, 좋음 긍정. 딱딱한 쿠션, 소음 발생 언급.", "pos_summary": "만족, 편안함, 좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 소음 발생 관련 언급 존재"}, "2025-03": {"count": 41, "avg_rating": 4.85, "positive": ["편안함", "만족", "좋음", "친절한 서비스", "부드러운 쿠션", "설치 편의", "최고", "가성비"], "negative": ["불편함", "딱딱한 쿠션", "제품 문제", "후회/실망", "무거움", "통증 유발"], "neutral": ["배송", "가격"], "summary": "2025-03 소닉슬립 41건 · 평점 4.85. 편안함, 만족, 좋음 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "편안함, 만족, 좋음 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2025-04": {"count": 61, "avg_rating": 4.75, "positive": ["만족", "좋음", "편안함", "추천", "설치 편의", "친절한 서비스", "편리함", "빠른 배송"], "negative": ["딱딱한 쿠션", "불편함", "통증 유발", "고장/불량", "무거움", "흔들림"], "neutral": ["배송", "가격", "사이즈"], "summary": "2025-04 소닉슬립 61건 · 평점 4.75. 만족, 좋음, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "만족, 좋음, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-05": {"count": 41, "avg_rating": 4.85, "positive": ["좋음", "만족", "편안함", "친절한 서비스", "설치 편의", "리모컨 편의성", "추천", "부드러운 쿠션"], "negative": ["딱딱한 쿠션", "불편함", "소음 발생", "후회/실망", "통증 유발", "무거움"], "neutral": ["배송", "사이즈", "가격"], "summary": "2025-05 소닉슬립 41건 · 평점 4.85. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-06": {"count": 50, "avg_rating": 4.86, "positive": ["편안함", "좋음", "만족", "친절한 서비스", "설치 편의", "안정감", "가성비", "추천"], "negative": ["딱딱한 쿠션", "불편함", "고장/불량", "아쉬운 점", "소음 발생", "흔들림"], "neutral": ["배송", "가격"], "summary": "2025-06 소닉슬립 50건 · 평점 4.86. 편안함, 좋음, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "편안함, 좋음, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-07": {"count": 63, "avg_rating": 4.81, "positive": ["좋음", "편안함", "만족", "설치 편의", "가성비", "부드러운 쿠션", "리모컨 편의성", "최고"], "negative": ["딱딱한 쿠션", "불편함", "통증 유발", "고장/불량", "후회/실망", "제품 문제"], "neutral": ["배송", "사이즈", "가격"], "summary": "2025-07 소닉슬립 63건 · 평점 4.81. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-08": {"count": 53, "avg_rating": 4.83, "positive": ["좋음", "편안함", "만족", "설치 편의", "친절한 서비스", "편리함", "정숙성", "안정감"], "negative": ["딱딱한 쿠션", "불편함", "고장/불량", "무거움", "아쉬운 점", "소음 발생"], "neutral": ["배송", "가격", "사이즈"], "summary": "2025-08 소닉슬립 53건 · 평점 4.83. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-09": {"count": 60, "avg_rating": 4.73, "positive": ["좋음", "편안함", "만족", "설치 편의", "편리함", "리모컨 편의성", "친절한 서비스", "정숙성"], "negative": ["불편함", "딱딱한 쿠션", "고장/불량", "통증 유발", "높은 가격"], "neutral": ["배송", "사이즈"], "summary": "2025-09 소닉슬립 60건 · 평점 4.73. 좋음, 편안함, 만족 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2025-10": {"count": 49, "avg_rating": 4.8, "positive": ["만족", "좋음", "편안함", "추천", "설치 편의", "리모컨 편의성", "탄탄한 지지력", "디자인"], "negative": ["딱딱한 쿠션", "불편함", "통증 유발", "고장/불량"], "neutral": ["배송", "사이즈"], "summary": "2025-10 소닉슬립 49건 · 평점 4.8. 만족, 좋음, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "만족, 좋음, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-11": {"count": 57, "avg_rating": 4.65, "positive": ["좋음", "만족", "편안함", "설치 편의", "부드러운 쿠션", "리모컨 편의성", "빠른 배송", "친절한 서비스"], "negative": ["딱딱한 쿠션", "불편함", "흔들림", "소음 발생"], "neutral": ["배송", "사이즈", "가격"], "summary": "2025-11 소닉슬립 57건 · 평점 4.65. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-12": {"count": 76, "avg_rating": 4.74, "positive": ["좋음", "편안함", "만족", "가성비", "설치 편의", "안정감", "추천", "부드러운 쿠션"], "negative": ["딱딱한 쿠션", "불편함", "제품 문제", "소음 발생", "높은 가격", "아쉬운 점"], "neutral": ["배송", "가격", "사이즈"], "summary": "2025-12 소닉슬립 76건 · 평점 4.74. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-01": {"count": 64, "avg_rating": 4.72, "positive": ["좋음", "만족", "편안함", "설치 편의", "추천", "친절한 서비스", "빠른 배송", "안정감"], "negative": ["딱딱한 쿠션", "불편함", "소음 발생", "통증 유발", "고장/불량", "흔들림"], "neutral": ["배송", "가격", "사이즈"], "summary": "2026-01 소닉슬립 64건 · 평점 4.72. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-02": {"count": 49, "avg_rating": 4.76, "positive": ["만족", "편안함", "좋음", "설치 편의", "친절한 서비스", "추천", "리모컨 편의성", "편리함"], "negative": ["딱딱한 쿠션", "고장/불량", "통증 유발", "불편함", "소음 발생"], "neutral": ["배송", "가격", "사이즈"], "summary": "2026-02 소닉슬립 49건 · 평점 4.76. 만족, 편안함, 좋음 긍정. 딱딱한 쿠션, 고장/불량 언급.", "pos_summary": "만족, 편안함, 좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 고장/불량 관련 언급 존재"}, "2026-03": {"count": 52, "avg_rating": 4.88, "positive": ["좋음", "만족", "편안함", "가성비", "추천", "편리함", "친절한 서비스", "설치 편의"], "negative": ["딱딱한 쿠션", "불편함", "소음 발생", "제품 문제", "통증 유발"], "neutral": ["배송", "가격", "사이즈"], "summary": "2026-03 소닉슬립 52건 · 평점 4.88. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-04": {"count": 43, "avg_rating": 4.95, "positive": ["좋음", "편안함", "만족", "편리함", "설치 편의", "추천", "탄탄한 지지력", "정숙성"], "negative": ["딱딱한 쿠션", "불편함", "고장/불량", "소음 발생", "통증 유발", "높은 가격"], "neutral": ["배송", "사이즈", "가격"], "summary": "2026-04 소닉슬립 43건 · 평점 4.95. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-05": {"count": 54, "avg_rating": 4.81, "positive": ["좋음", "편안함", "만족", "친절한 서비스", "추천", "빠른 배송", "설치 편의", "안정감"], "negative": ["딱딱한 쿠션", "소음 발생", "흔들림", "고장/불량", "불편함"], "neutral": ["배송", "사이즈", "가격"], "summary": "2026-05 소닉슬립 54건 · 평점 4.81. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 소음 발생 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 소음 발생 관련 언급 존재"}, "2026-06": {"count": 3, "avg_rating": 4.67, "positive": ["좋음", "탄탄한 지지력", "편안함", "리모컨 편의성"], "negative": ["딱딱한 쿠션", "소음 발생", "고장/불량", "불편함"], "neutral": [], "summary": "2026-06 소닉슬립 3건 · 평점 4.67. 좋음, 탄탄한 지지력, 편안함 긍정. 딱딱한 쿠션, 소음 발생 언급.", "pos_summary": "좋음, 탄탄한 지지력, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 소음 발생 관련 언급 존재"}};
+var OK_REVIEWS = {"2022-09": {"count": 1, "avg_rating": 5.0, "positive": ["만족"], "negative": [], "neutral": [], "summary": "2022-09 오키미키 1건 · 평점 5.0. 만족 긍정. 없음 언급.", "pos_summary": "만족 관련 긍정 반응 다수", "neg_summary": "부정 언급 거의 없음"}, "2022-10": {"count": 1, "avg_rating": 5.0, "positive": ["좋음", "만족"], "negative": ["소음 발생"], "neutral": [], "summary": "2022-10 오키미키 1건 · 평점 5.0. 좋음, 만족 긍정. 소음 발생 언급.", "pos_summary": "좋음, 만족 관련 긍정 반응 다수", "neg_summary": "소음 발생 관련 언급 존재"}, "2022-11": {"count": 3, "avg_rating": 5.0, "positive": ["좋음", "설치 편의", "최고", "가성비", "포근함"], "negative": ["통증 유발"], "neutral": ["가격"], "summary": "2022-11 오키미키 3건 · 평점 5.0. 좋음, 설치 편의, 최고 긍정. 통증 유발 언급.", "pos_summary": "좋음, 설치 편의, 최고 관련 긍정 반응 다수", "neg_summary": "통증 유발 관련 언급 존재"}, "2023-01": {"count": 1, "avg_rating": 5.0, "positive": ["만족"], "negative": [], "neutral": [], "summary": "2023-01 오키미키 1건 · 평점 5.0. 만족 긍정. 없음 언급.", "pos_summary": "만족 관련 긍정 반응 다수", "neg_summary": "부정 언급 거의 없음"}, "2023-03": {"count": 2, "avg_rating": 5.0, "positive": ["편안함", "좋음", "부드러운 쿠션"], "negative": [], "neutral": [], "summary": "2023-03 오키미키 2건 · 평점 5.0. 편안함, 좋음, 부드러운 쿠션 긍정. 없음 언급.", "pos_summary": "편안함, 좋음, 부드러운 쿠션 관련 긍정 반응 다수", "neg_summary": "부정 언급 거의 없음"}, "2023-05": {"count": 4, "avg_rating": 5.0, "positive": ["친절한 서비스", "편안함", "만족", "빠른 배송", "좋음"], "negative": ["소음 발생", "통증 유발", "불편함"], "neutral": ["배송", "사이즈", "가격"], "summary": "2023-05 오키미키 4건 · 평점 5.0. 친절한 서비스, 편안함, 만족 긍정. 소음 발생, 통증 유발 언급.", "pos_summary": "친절한 서비스, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "소음 발생, 통증 유발 관련 언급 존재"}, "2023-07": {"count": 7, "avg_rating": 4.86, "positive": ["편안함", "좋음", "추천", "친절한 서비스"], "negative": ["통증 유발"], "neutral": ["사이즈", "가격"], "summary": "2023-07 오키미키 7건 · 평점 4.86. 편안함, 좋음, 추천 긍정. 통증 유발 언급.", "pos_summary": "편안함, 좋음, 추천 관련 긍정 반응 다수", "neg_summary": "통증 유발 관련 언급 존재"}, "2023-08": {"count": 8, "avg_rating": 5.0, "positive": ["좋음", "편안함", "친절한 서비스", "설치 편의", "안정감", "만족", "가성비"], "negative": [], "neutral": ["배송", "가격"], "summary": "2023-08 오키미키 8건 · 평점 5.0. 좋음, 편안함, 친절한 서비스 긍정. 없음 언급.", "pos_summary": "좋음, 편안함, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "부정 언급 거의 없음"}, "2023-09": {"count": 11, "avg_rating": 4.82, "positive": ["좋음", "설치 편의", "친절한 서비스", "편리함", "부드러운 쿠션", "가성비", "편안함"], "negative": ["소음 발생", "딱딱한 쿠션"], "neutral": ["배송"], "summary": "2023-09 오키미키 11건 · 평점 4.82. 좋음, 설치 편의, 친절한 서비스 긍정. 소음 발생, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 설치 편의, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "소음 발생, 딱딱한 쿠션 관련 언급 존재"}, "2023-10": {"count": 5, "avg_rating": 5.0, "positive": ["좋음", "편안함", "친절한 서비스"], "negative": ["불편함"], "neutral": ["배송"], "summary": "2023-10 오키미키 5건 · 평점 5.0. 좋음, 편안함, 친절한 서비스 긍정. 불편함 언급.", "pos_summary": "좋음, 편안함, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "불편함 관련 언급 존재"}, "2023-11": {"count": 4, "avg_rating": 5.0, "positive": ["친절한 서비스", "편리함", "좋음", "설치 편의", "만족"], "negative": ["딱딱한 쿠션"], "neutral": ["배송"], "summary": "2023-11 오키미키 4건 · 평점 5.0. 친절한 서비스, 편리함, 좋음 긍정. 딱딱한 쿠션 언급.", "pos_summary": "친절한 서비스, 편리함, 좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션 관련 언급 존재"}, "2023-12": {"count": 14, "avg_rating": 5.0, "positive": ["좋음", "편안함", "만족", "친절한 서비스", "빠른 배송", "설치 편의", "최고", "리모컨 편의성"], "negative": ["불편함", "통증 유발", "딱딱한 쿠션", "고장/불량"], "neutral": ["배송", "사이즈"], "summary": "2023-12 오키미키 14건 · 평점 5.0. 좋음, 편안함, 만족 긍정. 불편함, 통증 유발 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "불편함, 통증 유발 관련 언급 존재"}, "2024-01": {"count": 25, "avg_rating": 4.96, "positive": ["좋음", "친절한 서비스", "만족", "편안함", "포근함", "리모컨 편의성", "빠른 배송", "부드러운 쿠션"], "negative": ["불편함", "고장/불량", "딱딱한 쿠션"], "neutral": ["배송", "가격"], "summary": "2024-01 오키미키 25건 · 평점 4.96. 좋음, 친절한 서비스, 만족 긍정. 불편함, 고장/불량 언급.", "pos_summary": "좋음, 친절한 서비스, 만족 관련 긍정 반응 다수", "neg_summary": "불편함, 고장/불량 관련 언급 존재"}, "2024-02": {"count": 18, "avg_rating": 4.94, "positive": ["만족", "좋음", "친절한 서비스", "편안함", "설치 편의", "최고", "부드러운 쿠션", "정숙성"], "negative": ["딱딱한 쿠션", "불편함", "무거움", "제품 문제", "통증 유발"], "neutral": ["배송", "가격", "사이즈"], "summary": "2024-02 오키미키 18건 · 평점 4.94. 만족, 좋음, 친절한 서비스 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "만족, 좋음, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2024-03": {"count": 22, "avg_rating": 4.73, "positive": ["좋음", "만족", "편안함", "추천", "친절한 서비스", "설치 편의", "최고", "정숙성"], "negative": ["딱딱한 쿠션"], "neutral": ["배송", "사이즈", "가격"], "summary": "2024-03 오키미키 22건 · 평점 4.73. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션 관련 언급 존재"}, "2024-04": {"count": 20, "avg_rating": 4.8, "positive": ["좋음", "만족", "친절한 서비스", "편안함", "부드러운 쿠션", "빠른 배송", "설치 편의", "정숙성"], "negative": ["후회/실망", "딱딱한 쿠션", "불편함", "소음 발생"], "neutral": ["배송", "가격", "사이즈"], "summary": "2024-04 오키미키 20건 · 평점 4.8. 좋음, 만족, 친절한 서비스 긍정. 후회/실망, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 만족, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "후회/실망, 딱딱한 쿠션 관련 언급 존재"}, "2024-05": {"count": 16, "avg_rating": 4.94, "positive": ["좋음", "설치 편의", "편안함", "만족", "추천", "친절한 서비스", "정숙성", "편리함"], "negative": ["고장/불량", "불편함", "무거움", "제품 문제", "딱딱한 쿠션"], "neutral": ["배송", "사이즈", "가격"], "summary": "2024-05 오키미키 16건 · 평점 4.94. 좋음, 설치 편의, 편안함 긍정. 고장/불량, 불편함 언급.", "pos_summary": "좋음, 설치 편의, 편안함 관련 긍정 반응 다수", "neg_summary": "고장/불량, 불편함 관련 언급 존재"}, "2024-06": {"count": 10, "avg_rating": 5.0, "positive": ["추천", "친절한 서비스", "좋음", "만족", "편안함", "포근함", "설치 편의", "빠른 배송"], "negative": ["딱딱한 쿠션", "불편함", "후회/실망", "통증 유발"], "neutral": ["배송"], "summary": "2024-06 오키미키 10건 · 평점 5.0. 추천, 친절한 서비스, 좋음 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "추천, 친절한 서비스, 좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2024-07": {"count": 9, "avg_rating": 5.0, "positive": ["만족", "편안함", "좋음", "친절한 서비스", "빠른 배송", "추천"], "negative": ["불편함", "소음 발생", "제품 문제"], "neutral": ["배송", "사이즈", "가격"], "summary": "2024-07 오키미키 9건 · 평점 5.0. 만족, 편안함, 좋음 긍정. 불편함, 소음 발생 언급.", "pos_summary": "만족, 편안함, 좋음 관련 긍정 반응 다수", "neg_summary": "불편함, 소음 발생 관련 언급 존재"}, "2024-08": {"count": 4, "avg_rating": 5.0, "positive": ["좋음", "친절한 서비스", "추천", "빠른 배송"], "negative": [], "neutral": ["배송"], "summary": "2024-08 오키미키 4건 · 평점 5.0. 좋음, 친절한 서비스, 추천 긍정. 없음 언급.", "pos_summary": "좋음, 친절한 서비스, 추천 관련 긍정 반응 다수", "neg_summary": "부정 언급 거의 없음"}, "2024-09": {"count": 4, "avg_rating": 5.0, "positive": ["만족", "친절한 서비스", "좋음", "추천", "설치 편의", "부드러운 쿠션"], "negative": ["딱딱한 쿠션", "고장/불량"], "neutral": ["배송", "가격"], "summary": "2024-09 오키미키 4건 · 평점 5.0. 만족, 친절한 서비스, 좋음 긍정. 딱딱한 쿠션, 고장/불량 언급.", "pos_summary": "만족, 친절한 서비스, 좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 고장/불량 관련 언급 존재"}, "2024-10": {"count": 7, "avg_rating": 5.0, "positive": ["좋음"], "negative": ["딱딱한 쿠션"], "neutral": ["배송"], "summary": "2024-10 오키미키 7건 · 평점 5.0. 좋음 긍정. 딱딱한 쿠션 언급.", "pos_summary": "좋음 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션 관련 언급 존재"}, "2024-11": {"count": 9, "avg_rating": 5.0, "positive": ["만족", "편안함", "친절한 서비스", "부드러운 쿠션", "추천", "설치 편의", "디자인", "좋음"], "negative": ["딱딱한 쿠션", "불편함", "제품 문제"], "neutral": ["배송", "사이즈", "가격"], "summary": "2024-11 오키미키 9건 · 평점 5.0. 만족, 편안함, 친절한 서비스 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "만족, 편안함, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2024-12": {"count": 10, "avg_rating": 4.7, "positive": ["좋음", "친절한 서비스", "가성비", "편안함", "부드러운 쿠션", "정숙성", "설치 편의"], "negative": ["불편함"], "neutral": ["배송"], "summary": "2024-12 오키미키 10건 · 평점 4.7. 좋음, 친절한 서비스, 가성비 긍정. 불편함 언급.", "pos_summary": "좋음, 친절한 서비스, 가성비 관련 긍정 반응 다수", "neg_summary": "불편함 관련 언급 존재"}, "2025-01": {"count": 15, "avg_rating": 4.87, "positive": ["좋음", "편안함", "만족", "최고", "친절한 서비스", "포근함", "리모컨 편의성", "추천"], "negative": ["딱딱한 쿠션", "불편함", "제품 문제", "높은 가격", "후회/실망", "통증 유발"], "neutral": ["가격", "배송"], "summary": "2025-01 오키미키 15건 · 평점 4.87. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-02": {"count": 22, "avg_rating": 4.91, "positive": ["좋음", "친절한 서비스", "편안함", "만족", "설치 편의", "추천", "가성비", "빠른 배송"], "negative": ["딱딱한 쿠션", "소음 발생", "높은 가격"], "neutral": ["배송", "가격"], "summary": "2025-02 오키미키 22건 · 평점 4.91. 좋음, 친절한 서비스, 편안함 긍정. 딱딱한 쿠션, 소음 발생 언급.", "pos_summary": "좋음, 친절한 서비스, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 소음 발생 관련 언급 존재"}, "2025-03": {"count": 29, "avg_rating": 4.76, "positive": ["만족", "좋음", "친절한 서비스", "설치 편의", "편안함", "가성비", "부드러운 쿠션", "추천"], "negative": ["불편함", "딱딱한 쿠션", "소음 발생", "흔들림", "후회/실망", "높은 가격"], "neutral": ["배송", "가격"], "summary": "2025-03 오키미키 29건 · 평점 4.76. 만족, 좋음, 친절한 서비스 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "만족, 좋음, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2025-04": {"count": 29, "avg_rating": 4.76, "positive": ["좋음", "편안함", "만족", "추천", "친절한 서비스", "설치 편의", "가성비", "최고"], "negative": ["딱딱한 쿠션", "제품 문제", "고장/불량", "소음 발생", "불편함"], "neutral": ["배송", "사이즈", "가격"], "summary": "2025-04 오키미키 29건 · 평점 4.76. 좋음, 편안함, 만족 긍정. 딱딱한 쿠션, 제품 문제 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 제품 문제 관련 언급 존재"}, "2025-05": {"count": 30, "avg_rating": 4.8, "positive": ["좋음", "만족", "편안함", "추천", "친절한 서비스", "부드러운 쿠션", "리모컨 편의성", "최고"], "negative": ["딱딱한 쿠션", "불편함", "소음 발생", "제품 문제", "통증 유발", "고장/불량"], "neutral": ["배송", "가격", "사이즈"], "summary": "2025-05 오키미키 30건 · 평점 4.8. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-06": {"count": 27, "avg_rating": 4.52, "positive": ["좋음", "친절한 서비스", "만족", "추천", "설치 편의", "편안함", "리모컨 편의성", "탄탄한 지지력"], "negative": ["소음 발생", "딱딱한 쿠션", "불편함", "무거움", "후회/실망"], "neutral": ["배송", "가격"], "summary": "2025-06 오키미키 27건 · 평점 4.52. 좋음, 친절한 서비스, 만족 긍정. 소음 발생, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 친절한 서비스, 만족 관련 긍정 반응 다수", "neg_summary": "소음 발생, 딱딱한 쿠션 관련 언급 존재"}, "2025-07": {"count": 23, "avg_rating": 4.74, "positive": ["좋음", "편안함", "추천", "만족", "가성비", "리모컨 편의성", "설치 편의", "정숙성"], "negative": ["딱딱한 쿠션", "통증 유발", "제품 문제", "불편함"], "neutral": ["배송", "가격"], "summary": "2025-07 오키미키 23건 · 평점 4.74. 좋음, 편안함, 추천 긍정. 딱딱한 쿠션, 통증 유발 언급.", "pos_summary": "좋음, 편안함, 추천 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 통증 유발 관련 언급 존재"}, "2025-08": {"count": 24, "avg_rating": 5.0, "positive": ["만족", "좋음", "편안함", "친절한 서비스", "설치 편의", "최고", "리모컨 편의성"], "negative": ["딱딱한 쿠션", "불편함", "제품 문제"], "neutral": ["배송", "가격"], "summary": "2025-08 오키미키 24건 · 평점 5.0. 만족, 좋음, 편안함 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "만족, 좋음, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2025-09": {"count": 22, "avg_rating": 4.86, "positive": ["좋음", "만족", "편안함", "친절한 서비스", "추천", "디자인", "앱 연동", "가성비"], "negative": ["딱딱한 쿠션", "소음 발생", "아쉬운 점"], "neutral": ["배송", "가격"], "summary": "2025-09 오키미키 22건 · 평점 4.86. 좋음, 만족, 편안함 긍정. 딱딱한 쿠션, 소음 발생 언급.", "pos_summary": "좋음, 만족, 편안함 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 소음 발생 관련 언급 존재"}, "2025-10": {"count": 19, "avg_rating": 4.74, "positive": ["좋음", "친절한 서비스", "편안함", "만족", "빠른 배송", "설치 편의", "추천"], "negative": ["불편함", "후회/실망", "딱딱한 쿠션"], "neutral": ["배송", "사이즈", "가격"], "summary": "2025-10 오키미키 19건 · 평점 4.74. 좋음, 친절한 서비스, 편안함 긍정. 불편함, 후회/실망 언급.", "pos_summary": "좋음, 친절한 서비스, 편안함 관련 긍정 반응 다수", "neg_summary": "불편함, 후회/실망 관련 언급 존재"}, "2025-11": {"count": 21, "avg_rating": 4.71, "positive": ["좋음", "편안함", "친절한 서비스", "만족", "설치 편의", "추천", "리모컨 편의성", "앱 연동"], "negative": ["불편함", "딱딱한 쿠션", "후회/실망"], "neutral": ["배송", "사이즈"], "summary": "2025-11 오키미키 21건 · 평점 4.71. 좋음, 편안함, 친절한 서비스 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "좋음, 편안함, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2025-12": {"count": 25, "avg_rating": 4.72, "positive": ["좋음", "만족", "친절한 서비스", "추천", "리모컨 편의성", "편안함", "앱 연동", "최고"], "negative": ["딱딱한 쿠션", "아쉬운 점", "통증 유발", "불편함", "제품 문제"], "neutral": ["배송", "가격"], "summary": "2025-12 오키미키 25건 · 평점 4.72. 좋음, 만족, 친절한 서비스 긍정. 딱딱한 쿠션, 아쉬운 점 언급.", "pos_summary": "좋음, 만족, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 아쉬운 점 관련 언급 존재"}, "2026-01": {"count": 21, "avg_rating": 4.81, "positive": ["편안함", "좋음", "친절한 서비스", "리모컨 편의성", "설치 편의", "추천", "만족", "빠른 배송"], "negative": ["딱딱한 쿠션", "불편함", "아쉬운 점", "고장/불량", "제품 문제", "통증 유발"], "neutral": ["배송", "가격"], "summary": "2026-01 오키미키 21건 · 평점 4.81. 편안함, 좋음, 친절한 서비스 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "편안함, 좋음, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-02": {"count": 15, "avg_rating": 4.67, "positive": ["좋음", "편안함", "만족", "친절한 서비스", "탄탄한 지지력", "추천", "설치 편의", "리모컨 편의성"], "negative": ["고장/불량", "아쉬운 점", "통증 유발", "딱딱한 쿠션"], "neutral": ["배송", "가격", "사이즈"], "summary": "2026-02 오키미키 15건 · 평점 4.67. 좋음, 편안함, 만족 긍정. 고장/불량, 아쉬운 점 언급.", "pos_summary": "좋음, 편안함, 만족 관련 긍정 반응 다수", "neg_summary": "고장/불량, 아쉬운 점 관련 언급 존재"}, "2026-03": {"count": 14, "avg_rating": 5.0, "positive": ["좋음", "만족", "친절한 서비스", "설치 편의", "편안함", "최고", "탄탄한 지지력", "가성비"], "negative": ["딱딱한 쿠션", "불편함"], "neutral": ["배송"], "summary": "2026-03 오키미키 14건 · 평점 5.0. 좋음, 만족, 친절한 서비스 긍정. 딱딱한 쿠션, 불편함 언급.", "pos_summary": "좋음, 만족, 친절한 서비스 관련 긍정 반응 다수", "neg_summary": "딱딱한 쿠션, 불편함 관련 언급 존재"}, "2026-04": {"count": 17, "avg_rating": 4.76, "positive": ["만족", "편안함", "설치 편의", "빠른 배송", "친절한 서비스", "좋음", "리모컨 편의성", "디자인"], "negative": ["불편함", "딱딱한 쿠션", "후회/실망"], "neutral": ["배송", "사이즈"], "summary": "2026-04 오키미키 17건 · 평점 4.76. 만족, 편안함, 설치 편의 긍정. 불편함, 딱딱한 쿠션 언급.", "pos_summary": "만족, 편안함, 설치 편의 관련 긍정 반응 다수", "neg_summary": "불편함, 딱딱한 쿠션 관련 언급 존재"}, "2026-05": {"count": 13, "avg_rating": 4.46, "positive": ["만족", "친절한 서비스", "편안함", "편리함", "앱 연동", "좋음", "설치 편의"], "negative": ["제품 문제", "무거움", "불편함"], "neutral": ["배송", "사이즈"], "summary": "2026-05 오키미키 13건 · 평점 4.46. 만족, 친절한 서비스, 편안함 긍정. 제품 문제, 무거움 언급.", "pos_summary": "만족, 친절한 서비스, 편안함 관련 긍정 반응 다수", "neg_summary": "제품 문제, 무거움 관련 언급 존재"}};
+
+function renderReviewSummaries(){
+  // 리뷰 탭에도 데이터 주입
+  injectReviewData('소닉슬립', SS_REVIEWS);
+  injectReviewData('오키미키', OK_REVIEWS);
+
+  // 비교탭 카드
+  var sEl=document.getElementById('ss-review-summary');
+  if(sEl)sEl.innerHTML=buildReviewCard(SS_REVIEWS, {5:865,4:92,3:30,2:4,1:9}, 1000);
+  var oEl=document.getElementById('ok-review-summary');
+  if(oEl)oEl.innerHTML=buildReviewCard(OK_REVIEWS, {5:512,4:49,3:11,2:4,1:5}, 581);
+}
+
+function injectReviewData(comp, dataObj){
+  var existing = getRv(comp);
+  var changed = false;
+  Object.keys(dataObj).forEach(function(m){
+    var d = dataObj[m];
+    var found = existing.some(function(r){return r.month===m;});
+    if(!found){
+      existing.push({month:m, source:'아이템스카우트 리뷰 파일', positive:d.positive, negative:d.negative, neutral:d.neutral, summary:d.summary, count:d.count, avg_rating:d.avg_rating});
+      changed = true;
+    }
+  });
+  if(changed){
+    existing.sort(function(a,b){return a.month.localeCompare(b.month);});
+    saveRv(comp, existing);
+  }
+}
+
+function buildReviewCard(dataObj, ratingDist, total){
+  // 최근 월 데이터
+  var months = Object.keys(dataObj).sort();
+  var last = dataObj[months[months.length-1]];
+  var avgR = last ? last.avg_rating : 0;
+
+  // 평점 분포 바
+  var stars='';
+  for(var i=5;i>=1;i--){
+    var cnt = ratingDist[i]||0;
+    var w = Math.round(cnt/total*100);
+    var barCol = i>=4?'var(--green)':i===3?'var(--amber)':'var(--red)';
+    stars+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
+      +'<span style="font-size:11px;color:var(--text2);width:14px">'+i+'★</span>'
+      +'<div style="flex:1;height:6px;background:var(--bg);border-radius:3px"><div style="width:'+w+'%;height:100%;background:'+barCol+';border-radius:3px"></div></div>'
+      +'<span style="font-size:10px;color:var(--text3);width:30px">'+w+'%</span>'
+      +'</div>';
+  }
+
+  // 최근 3개월 누적 키워드
+  var recentMonths = months.slice(-3);
+  var posCount={}, negCount={};
+  recentMonths.forEach(function(m){
+    (dataObj[m].positive||[]).forEach(function(k){posCount[k]=(posCount[k]||0)+1;});
+    (dataObj[m].negative||[]).forEach(function(k){negCount[k]=(negCount[k]||0)+1;});
+  });
+  var topPos = Object.keys(posCount).sort(function(a,b){return posCount[b]-posCount[a];}).slice(0,6);
+  var topNeg = Object.keys(negCount).sort(function(a,b){return negCount[b]-negCount[a];}).slice(0,5);
+
+  var posKw = topPos.map(function(k){
+    return '<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:#ebfbee;color:#2f855a;border:1px solid #9ae6b4;display:inline-block;margin:2px">'+k+'</span>';
+  }).join('');
+  var negKw = topNeg.map(function(k){
+    return '<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--red-l);color:var(--red);border:1px solid #feb2b2;display:inline-block;margin:2px">'+k+'</span>';
+  }).join('');
+
+  // 평점 추이 미니 차트용 데이터 표시
+  var trendHtml = '<div style="display:flex;gap:4px;margin-top:10px;margin-bottom:4px;flex-wrap:wrap">';
+  months.forEach(function(m){
+    var d=dataObj[m]; if(!d)return;
+    var col = d.avg_rating>=4.9?'var(--green)':d.avg_rating>=4.7?'var(--blue)':'var(--amber)';
+    trendHtml+='<div style="text-align:center"><div style="font-size:9px;color:var(--text3)">'+m.slice(5)+'월</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+d.avg_rating+'</div><div style="font-size:9px;color:var(--text3)">'+d.count+'건</div></div>';
+  });
+  trendHtml += '</div>';
+
+  return '<div style="margin-bottom:10px">'
+    +'<div style="font-size:24px;font-weight:700;color:var(--text);display:inline">'+avgR+'</div>'
+    +'<span style="font-size:12px;color:var(--text3);margin-left:4px">/ 5.0 ('+total.toLocaleString()+'건)</span>'
+    +'</div>'
+    +stars
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);margin:8px 0 2px;text-transform:uppercase">월별 평점 추이</div>'
+    +trendHtml
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);margin:8px 0 3px;text-transform:uppercase">최근 3개월 긍정 키워드</div>'+posKw
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);margin:8px 0 3px;text-transform:uppercase">최근 3개월 부정 키워드</div>'+negKw;
+}
+
+function reviewSummaryHtml(d){
+  var stars='';
+  for(var i=5;i>=1;i--){
+    var w=Math.round(d.ratingDist[i]/d.totalReviews*100);
+    stars+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="font-size:11px;color:var(--text2);width:14px">'+i+'★</span><div style="flex:1;height:6px;background:var(--bg);border-radius:3px"><div style="width:'+w+'%;height:100%;background:'+(i>=4?'var(--green)':i===3?'var(--amber)':'var(--red)')+';border-radius:3px"></div></div><span style="font-size:10px;color:var(--text3);width:30px">'+w+'%</span></div>';
+  }
+  var posKw=d.topPos.map(function(k){return '<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:#ebfbee;color:#2f855a;border:1px solid #9ae6b4;display:inline-block;margin:2px">'+k+'</span>';}).join('');
+  var negKw=d.topNeg.map(function(k){return '<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--red-l);color:var(--red);border:1px solid #feb2b2;display:inline-block;margin:2px">'+k+'</span>';}).join('');
+  return '<div style="margin-bottom:10px"><div style="font-size:24px;font-weight:700;color:var(--text);display:inline">'+d.avgRating+'</div><span style="font-size:12px;color:var(--text3);margin-left:4px">/ 5.0 ('+d.totalReviews.toLocaleString()+'건)</span></div>'
+    +stars
+    +'<div style="margin-top:10px;margin-bottom:4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase">자주 언급 긍정</div>'+posKw
+    +'<div style="margin-top:8px;margin-bottom:4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase">자주 언급 부정</div>'+negKw;
+}
+
+init();
+</script>
+</body>
+</html>
