@@ -315,6 +315,46 @@ table.log td.v{color:var(--text);font-weight:600}
       <div class="alert" id="alert-upload"></div>
       <div class="comp-bar" id="compbar-upload"></div>
 
+      <!-- 네이버 자동 가격 수집 섹션 -->
+      <div class="card" style="margin-bottom:12px;flex-shrink:0">
+        <div class="card-hd">
+          <div class="card-title">🛒 네이버 쇼핑 최저가 자동 수집</div>
+          <span style="font-size:10px;color:var(--text3)">Vercel 프록시 경유</span>
+        </div>
+        <div class="card-bd" style="padding:12px 16px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <input id="naver-query" type="text" placeholder="검색어 입력 (예: 소닉슬립 모션베드)" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--bg);color:var(--text)"/>
+            <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin:0">
+              <label style="font-size:11px;white-space:nowrap;margin:0">날짜</label>
+              <input type="date" id="naver-save-date" style="padding:6px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--text)"/>
+            </div>
+            <button class="btn btn-primary" onclick="fetchNaverPrices()" id="naver-fetch-btn">
+              🔍 가격 가져오기
+            </button>
+          </div>
+          <!-- 결과 테이블 -->
+          <div id="naver-result" style="display:none">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase">검색 결과 — 최저가 / 최고가</div>
+            <div style="overflow-x:auto">
+              <table class="log" style="font-size:11px;width:100%" id="naver-result-table">
+                <thead><tr>
+                  <th>상품명</th>
+                  <th style="text-align:right">최저가</th>
+                  <th style="text-align:right">최고가</th>
+                  <th style="text-align:center">저장</th>
+                </tr></thead>
+                <tbody id="naver-result-body"></tbody>
+              </table>
+            </div>
+            <div style="margin-top:8px;display:flex;justify-content:flex-end">
+              <button class="btn btn-green btn-sm" onclick="saveAllNaverPrices()">✅ 전체 저장</button>
+            </div>
+          </div>
+          <div id="naver-loading" style="display:none;text-align:center;padding:12px;font-size:12px;color:var(--text3)">⏳ 네이버 쇼핑 검색 중...</div>
+          <div id="naver-error" style="display:none;padding:8px 12px;background:var(--red-l,#fff5f5);border-radius:var(--r-sm);font-size:11px;color:var(--red)"></div>
+        </div>
+      </div>
+
       <!-- Upload zone -->
       <!-- 현재 선택 경쟁사 표시 -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1266,7 +1306,7 @@ function clearAll(){
 
 // ── SEED DATA (pre-loaded history) ──
 (function(){
-  var SEED = {"sst_comp_v8": ["소닉슬립", "오키미키"], "sst_data_v8": {"소닉슬립": {"entries": [
+  var SEED = {"sst_comp_v8": ["소닉슬립", "오키미키", "버킷츠"], "sst_data_v8": {"소닉슬립": {"entries": [
     {"date": "2026-05-27", "items": [
       {"optKey": "NEW쉬프트 / 단단한 하드타입 / 퀸(Q)", "price": 2190000, "origin": null},
       {"optKey": "헤드틸팅 / 단단한 하드타입 / 퀸(Q)", "price": 1940000, "origin": null},
@@ -1289,12 +1329,24 @@ function clearAll(){
       {"optKey": "헤드틸팅 / 단단한 하드타입 / 싱글(S)", "price": 1660000, "origin": null},
       {"optKey": "베이직 / 단단한 하드타입 / 싱글(S)", "price": 1390000, "origin": null}
     ]}
-  ]}, "오키미키": {"entries": []}}};
-  // 경쟁사 목록: 없으면 세팅
-  if(!localStorage.getItem('sst_comp_v8')){
-    localStorage.setItem('sst_comp_v8', JSON.stringify(SEED['sst_comp_v8']));
+  ]}, "오키미키": {"entries": []}, "버킷츠": {"entries": [
+    {"date": "2026-06-04", "items": [
+      {"optKey": "그레이 / SS(슈퍼싱글)", "price": 899000, "origin": 2500000},
+      {"optKey": "그레이 / Q(퀸)", "price": 1099000, "origin": null},
+      {"optKey": "그레이 / S+S(싱글+싱글)", "price": 1688000, "origin": null},
+      {"optKey": "그레이 / S+SS(슈퍼싱글+슈퍼싱글)", "price": 1888000, "origin": null}
+    ]}
+  ]}}};
+  // 경쟁사 목록: 시드에 있는 경쟁사를 기존 목록에 병합
+  var existingComps = [];
+  try { existingComps = JSON.parse(localStorage.getItem('sst_comp_v8')||'[]'); } catch(e){}
+  var seedComps = SEED['sst_comp_v8'];
+  var compChanged = false;
+  seedComps.forEach(function(c){ if(existingComps.indexOf(c)<0){ existingComps.push(c); compChanged=true; } });
+  if(!localStorage.getItem('sst_comp_v8') || compChanged){
+    localStorage.setItem('sst_comp_v8', JSON.stringify(existingComps.length ? existingComps : seedComps));
   }
-  // 가격 데이터: 없으면 전체 세팅, 있으면 누락된 날짜 항목만 병합
+  // 가격 데이터: 없으면 전체 세팅, 있으면 누락된 경쟁사/날짜 항목만 병합
   var existingRaw = localStorage.getItem('sst_data_v8');
   if(!existingRaw){
     localStorage.setItem('sst_data_v8', JSON.stringify(SEED['sst_data_v8']));
@@ -1403,8 +1455,131 @@ function kpiCard(label,value,sub){
   return '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">'+label+'</div><div style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.02em">'+value+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+sub+'</div></div>';
 }
 
-// ══════════════════════════════════════════════════
-// REVIEW
+// ══ 네이버 쇼핑 자동 가격 수집 ══
+var VERCEL_PROXY = 'https://sloubed-motion.vercel.app/api/naver';
+var naverResults = []; // 검색 결과 임시 저장
+
+function fetchNaverPrices(){
+  var query = document.getElementById('naver-query').value.trim();
+  if(!query){ alert('검색어를 입력해주세요!'); return; }
+
+  var btn = document.getElementById('naver-fetch-btn');
+  var loading = document.getElementById('naver-loading');
+  var result = document.getElementById('naver-result');
+  var errorEl = document.getElementById('naver-error');
+
+  btn.disabled = true;
+  btn.textContent = '검색 중...';
+  loading.style.display = 'block';
+  result.style.display = 'none';
+  errorEl.style.display = 'none';
+  naverResults = [];
+
+  // 날짜 기본값 오늘
+  var dateEl = document.getElementById('naver-save-date');
+  if(!dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+
+  fetch(VERCEL_PROXY + '?query=' + encodeURIComponent(query) + '&display=10')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      loading.style.display = 'none';
+      btn.disabled = false;
+      btn.textContent = '🔍 가격 가져오기';
+
+      if(data.errorCode){
+        errorEl.textContent = '오류: ' + data.errorMessage;
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      var items = data.items || [];
+      if(!items.length){
+        errorEl.textContent = '검색 결과가 없어요.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      naverResults = items;
+      var tbody = document.getElementById('naver-result-body');
+      tbody.innerHTML = '';
+
+      items.forEach(function(item, i){
+        var title = item.title.replace(/<[^>]+>/g,''); // HTML 태그 제거
+        var lprice = item.lprice ? parseInt(item.lprice).toLocaleString()+'원' : '—';
+        var hprice = item.hprice ? parseInt(item.hprice).toLocaleString()+'원' : '—';
+        var lp = item.lprice ? parseInt(item.lprice) : 0;
+        var hp = item.hprice ? parseInt(item.hprice) : 0;
+
+        tbody.innerHTML += '<tr>'
+          +'<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+title+'">'+title+'</td>'
+          +'<td style="text-align:right;color:var(--blue);font-weight:600">'+lprice+'</td>'
+          +'<td style="text-align:right;color:var(--text2)">'+hprice+'</td>'
+          +'<td style="text-align:center">'
+          +'<button class="btn btn-ghost btn-sm" style="font-size:10px" onclick="saveNaverItem('+i+')">저장</button>'
+          +'</td>'
+          +'</tr>';
+      });
+
+      result.style.display = 'block';
+    })
+    .catch(function(e){
+      loading.style.display = 'none';
+      btn.disabled = false;
+      btn.textContent = '🔍 가격 가져오기';
+      errorEl.textContent = '네트워크 오류: ' + e.message;
+      errorEl.style.display = 'block';
+    });
+}
+
+function saveNaverItem(idx){
+  var item = naverResults[idx];
+  if(!item) return;
+  var comp = tabComp['upload'] || (competitors.length ? competitors[0] : null);
+  if(!comp){ alert('경쟁사를 먼저 선택해주세요!'); return; }
+  var date = document.getElementById('naver-save-date').value || new Date().toISOString().slice(0,10);
+  var title = item.title.replace(/<[^>]+>/g,'');
+  var lp = item.lprice ? parseInt(item.lprice) : 0;
+  var hp = item.hprice ? parseInt(item.hprice) : 0;
+
+  var d = getData();
+  if(!d[comp]) d[comp] = {entries:[]};
+  var entry = d[comp].entries.find(function(e){return e.date===date;});
+  if(!entry){ entry={date:date,items:[]}; d[comp].entries.push(entry); d[comp].entries.sort(function(a,b){return a.date.localeCompare(b.date);}); }
+
+  // 최저가 저장
+  if(lp) entry.items.push({optKey: title+' (최저가)', price: lp, origin: null, source:'naver'});
+  // 최고가 저장
+  if(hp && hp !== lp) entry.items.push({optKey: title+' (최고가)', price: hp, origin: null, source:'naver'});
+
+  saveData(d);
+  showAlert('alert-upload', '✅ '+comp+' · '+title+' 저장 완료!', 'success');
+}
+
+function saveAllNaverPrices(){
+  if(!naverResults.length){ alert('먼저 가격을 검색해주세요!'); return; }
+  var comp = tabComp['upload'] || (competitors.length ? competitors[0] : null);
+  if(!comp){ alert('경쟁사를 먼저 선택해주세요!'); return; }
+  var date = document.getElementById('naver-save-date').value || new Date().toISOString().slice(0,10);
+
+  var d = getData();
+  if(!d[comp]) d[comp] = {entries:[]};
+  var entry = d[comp].entries.find(function(e){return e.date===date;});
+  if(!entry){ entry={date:date,items:[]}; d[comp].entries.push(entry); d[comp].entries.sort(function(a,b){return a.date.localeCompare(b.date);}); }
+
+  var count = 0;
+  naverResults.forEach(function(item){
+    var title = item.title.replace(/<[^>]+>/g,'');
+    var lp = item.lprice ? parseInt(item.lprice) : 0;
+    var hp = item.hprice ? parseInt(item.hprice) : 0;
+    if(lp){ entry.items.push({optKey: title+' (최저가)', price: lp, origin: null, source:'naver'}); count++; }
+    if(hp && hp !== lp){ entry.items.push({optKey: title+' (최고가)', price: hp, origin: null, source:'naver'}); count++; }
+  });
+
+  saveData(d);
+  showAlert('alert-upload', '✅ '+comp+' · 총 '+count+'개 항목 저장 완료!', 'success');
+}
+
+
 // ══════════════════════════════════════════════════
 var RV_KEY='sst_rv_v8';
 var selectedRvMonth='';
